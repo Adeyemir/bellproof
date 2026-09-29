@@ -8,6 +8,10 @@ The hackathon requires a specific, honest Developer Experience Report and says g
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 |  |  |  |  |  |  |  |  |  |
 
+## Observed development-environment incident
+
+On 29 September 2026 at about 17:39 UTC, the Codex managed shell called the local `GET /api/market?ticker=NVDA` endpoint with credentials configured in an ignored local env file. The endpoint returned HTTP 502 with `UPSTREAM_DNS_ERROR`: the server could not resolve `web3.binance.com`. A separate header-only `curl` to the Binance host exited with code 6, “Could not resolve host.” No request reached Binance, so this is **not** evidence of an authentication, documentation, or Binance API failure. The first successful signed call, upstream latency, and live token response remain unmeasured. Retest from a network that resolves the host and record the actual result here.
+
 ## First-call onboarding
 
 - Time opened documentation (UTC):

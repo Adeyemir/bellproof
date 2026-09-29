@@ -57,4 +57,4 @@ Open `http://localhost:3000`. Ticker lookup and RFQ preview call the Binance Web
 
 ## Current status
 
-The dashboard, signed API client, BSC RWA discovery with issuer profile and attestation links, RFQ quote preview, and deterministic session policy are implemented. A live API response has **not** yet been observed because credentials have not been configured in this workspace. There is no wallet signing or live trade yet. No API keys or wallet secrets belong in this repository.
+The dashboard, signed API client, BSC RWA discovery with issuer profile and attestation links, RFQ quote preview, and deterministic session policy are implemented. Credentials are configured in an ignored local env file, but a live API response has **not** yet been observed: this development environment could not resolve `web3.binance.com` on the first attempt. There is no wallet signing or live trade yet. No API keys or wallet secrets belong in this repository.

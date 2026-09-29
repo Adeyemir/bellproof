@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBinance, BinanceCredentialsMissingError, BinanceWeb3Error } from "@/lib/binance/server";
+import { getBinance, BinanceCredentialsMissingError, BinanceTransportError, BinanceWeb3Error } from "@/lib/binance/server";
 import { findBscStockMarkets } from "@/lib/binance/rwa";
 import {
   bscUsdtAddress,
@@ -83,6 +83,12 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof BinanceWeb3Error) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.status === 429 ? 429 : 502 });
+    }
+    if (error instanceof BinanceTransportError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.code === "UPSTREAM_TIMEOUT" ? 504 : 502 },
+      );
     }
     return NextResponse.json({ error: "Quote service is unavailable." }, { status: 502 });
   }

@@ -23,6 +23,16 @@ export class BinanceCredentialsMissingError extends Error {
   }
 }
 
+export class BinanceTransportError extends Error {
+  constructor(
+    message: string,
+    readonly code: "UPSTREAM_DNS_ERROR" | "UPSTREAM_TIMEOUT" | "UPSTREAM_NETWORK_ERROR",
+  ) {
+    super(message);
+    this.name = "BinanceTransportError";
+  }
+}
+
 type ParamValue = string | number | undefined | null;
 
 interface ApiEnvelope<T> {
@@ -47,19 +57,43 @@ async function request<T>(
   const body = method === "POST" ? JSON.stringify(payload ?? {}) : "";
   const signature = signRequest(secret, timestamp, method, requestPath, body);
 
-  const response = await fetch(baseUrl + requestPath, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      "X-OC-APIKEY": apiKey,
-      "X-OC-TIMESTAMP": timestamp,
-      "X-OC-SIGN": signature,
-      "X-OC-NONCE": randomUUID(),
-    },
-    body: method === "POST" ? body : undefined,
-    cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(baseUrl + requestPath, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-OC-APIKEY": apiKey,
+        "X-OC-TIMESTAMP": timestamp,
+        "X-OC-SIGN": signature,
+        "X-OC-NONCE": randomUUID(),
+      },
+      body: method === "POST" ? body : undefined,
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    const cause = error instanceof Error ? error.cause : null;
+    const networkCode = cause && typeof cause === "object" && "code" in cause
+      ? String(cause.code)
+      : null;
+    if (networkCode === "ENOTFOUND" || networkCode === "EAI_AGAIN") {
+      throw new BinanceTransportError(
+        "The server could not resolve web3.binance.com.",
+        "UPSTREAM_DNS_ERROR",
+      );
+    }
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new BinanceTransportError(
+        "The Binance Web3 API request timed out.",
+        "UPSTREAM_TIMEOUT",
+      );
+    }
+    throw new BinanceTransportError(
+      "The server could not reach the Binance Web3 API.",
+      "UPSTREAM_NETWORK_ERROR",
+    );
+  }
 
   let envelope: ApiEnvelope<T>;
   try {

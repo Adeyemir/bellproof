@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   BinanceCredentialsMissingError,
+  BinanceTransportError,
   BinanceWeb3Error,
 } from "@/lib/binance/server";
 import { findBscStockMarkets } from "@/lib/binance/rwa";
@@ -33,6 +34,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: error.message, code: error.code },
         { status: error.status === 429 ? 429 : 502 },
+      );
+    }
+    if (error instanceof BinanceTransportError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.code === "UPSTREAM_TIMEOUT" ? 504 : 502 },
       );
     }
     return NextResponse.json(
