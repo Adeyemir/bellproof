@@ -1,6 +1,6 @@
 # Bellproof architecture
 
-**Status:** proposed architecture; nothing in this document claims an implementation exists.
+**Status:** implementation plan, updated 29 September 2026. The dashboard, signed client, market lookup, RFQ preview, and pure policy engine exist; persistence and execution remain planned.
 
 ## Design rule
 
@@ -42,11 +42,11 @@ observe wallet and target weights
   -> compute allocation drift
   -> request fresh executable quote(s)
   -> compare alternatives and apply user policy
-  -> WAIT or BLOCK with evidence, or build transaction
-  -> simulate transaction
+  -> WAIT or BLOCK with evidence, or prepare route-specific execution
+  -> for RFQ: build/simulate exact approval if needed; validate typed order
   -> recheck quote age, status, and remaining caps
   -> request user signature (P0) or bounded wallet execution (P1)
-  -> verify receipt and balances
+  -> submit signed RFQ order and verify order status, receipt, and balances
   -> append immutable decision/result record
 ```
 
@@ -59,8 +59,9 @@ The order matters. A quote is not an authorization. Simulation is not settlement
 | Find same-ticker assets and issuer | RWA search, token list, underlying profile | Filter chain `56`; retain contract, issuer, decimals, `tokenToShareRatio`, and attestation links when present. |
 | Session and restriction state | RWA underlying market / token list `statusInfo` | Use API status and `nextOpenTime`, not a hand-coded US clock; closures, holidays, and corporate actions differ. |
 | Executable cost | Trading aggregated quote | A quote ID lasts about 30 seconds; compare output after share-ratio normalization and known fees. Present issuer rights and protections separately; equal share exposure does not imply legally equivalent tokens. No route means no trade. |
-| Transaction construction | Trading swap and approve transaction | Re-quote before construction, enforce spender/amount allowlist, and show exact requested approval. |
-| Preflight | Transaction simulation | Treat failure or missing expected balance changes as a block. |
+| RFQ order construction | Trading swap endpoint returns `rfq.typedDataToSign` for equity routes | Re-quote before construction; verify chain, wallet, token, amount, deadline, and vendor fields before EIP-712 signing. |
+| Approval preflight | Trading approval endpoint and Transaction simulation | For ERC-20 approval, enforce exact amount and vendor spender; simulate the approval transaction. RFQ orders themselves are not on-chain transactions to simulate through the Transaction API. |
+| Order submission | Trading RFQ order submit/status endpoints | Submit only the user-signed order and track its actual state; a signature is not settlement. |
 | Portfolio and post-trade state | Wallet balances / transaction status | Verify mined receipt and updated token balance before marking a trade complete. |
 
 References: [RWA](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/rest-api/rwa-data), [Trading](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/rest-api/trading-api), [Transaction](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/rest-api/transaction-api), [Wallet](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/rest-api/wallet-api).
@@ -68,9 +69,9 @@ References: [RWA](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/r
 ## Security and execution boundaries
 
 1. **Credentials:** Binance API key and secret stay on the server. Sign `timestamp + METHOD + /build/path?query + rawBody` using HMAC-SHA256, Base64 encoded. Never expose credentials in browser bundles, logs, or public decision records. [Binance authentication](https://web3.binance.com/en/dev-docs/authentication).
-2. **No private-key custody in P0:** the user signs the exact transaction in their wallet. The server can prepare and simulate but cannot move funds.
+2. **No private-key custody in P0:** the user signs an exact approval transaction if needed and the RFQ EIP-712 order in their wallet. The server prepares and checks but cannot sign for the user.
 3. **Allowlist and limits:** chain `56`, recognized token addresses, approved router/spender, exact or bounded ERC-20 approval, trade size, daily budget, slippage, quote impact, and cooldown are checked before and immediately before signing.
-4. **Fail closed:** unknown status, stale RWA data, stale quote, no route, simulation failure, unexpected approval target, or disagreement between expected and constructed transaction causes `BLOCK` or `WAIT`.
+4. **Fail closed:** unknown status, stale RWA data, stale quote, no route, failed approval simulation, unexpected approval target, or disagreement between the displayed quote and typed order causes `BLOCK` or `WAIT`.
 5. **No AI authority:** a model may explain a decision from structured facts. It cannot choose an unapproved token, edit a cap, sign, or call execution directly.
 6. **Autonomous P1:** only add Binance Agentic Wallet after verifying the team's account setup, token scope, daily limits, and approval flow. Its security rules are configured in the Binance App, according to [its documentation](https://developers.binance.com/en/docs/products/agentic-wallet/quickstart/install-agentic-wallet).
 
@@ -80,9 +81,9 @@ References: [RWA](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/r
 
 `Observation`: observed time, source response time, ticker, contract, issuer, session, `openState`, reason code, next open, wallet balance, target drift, quote ID/time, route, output amount, price impact/fee fields if supplied.
 
-`Decision`: policy version, observation references, action, ordered reason codes, selected and rejected alternatives, expected exposure, simulation status, signer mode, immutable content hash, created time.
+`Decision`: policy version, observation references, action, ordered reason codes, selected and rejected alternatives, expected exposure, preflight status, signer mode, immutable content hash, created time.
 
-`Execution`: decision ID, approval transaction if any, swap hash, receipt status, actual balance delta, verified time, failure reason.
+`Execution`: decision ID, approval transaction if any, RFQ order ID and status, settlement transaction hash if available, actual balance delta, verified time, failure reason.
 
 Public views redact wallet-sensitive details where appropriate but retain enough data and source links to reproduce the decision. A database decision hash is an audit aid; it is **not** an on-chain proof unless explicitly anchored in a transaction.
 
@@ -92,7 +93,7 @@ Public views redact wallet-sensitive details where appropriate but retain enough
 - Asset moves to `ASSET_PAUSED`: block even if an older quote exists.
 - Quote expires or route disappears: re-quote; never reuse an expired ID.
 - Approval spender or amount differs from what the UI displayed: block.
-- Simulation succeeds but the transaction reverts: record a failed execution, not a successful trade.
+- Approval simulation succeeds but the approval reverts, or an RFQ order fails after signing: record a failed execution, not a successful trade.
 - Scheduler retries the same window: idempotency key prevents duplicate orders.
 - Two issuer tokens represent different share ratios: normalize before comparison; never compare raw token counts.
 - API 401/429/5xx, timestamp drift, or missing fields: log a concise reason and wait without spending.

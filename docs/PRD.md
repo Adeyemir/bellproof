@@ -21,7 +21,7 @@ This is an execution and monitoring tool, not a source of investment recommendat
 ## Success criteria for the hackathon
 
 1. A judge can open a deployed app without credentials and inspect a real, timestamped decision from BSC market data.
-2. A connected wallet can set a basket and limits, receive a real BSC quote, inspect a simulation, and complete one small spot trade on mainnet.
+2. A connected wallet can set a basket and limits, receive a real BSC RFQ quote, review route-specific preflight, and complete one small spot trade on mainnet.
 3. The app can demonstrate `TRADE`, `WAIT`, and `BLOCK` outcomes with distinct, reproducible reason codes. Historical or fixture examples are clearly labelled; the live path never substitutes fixtures for current data.
 4. Every completed trade has a BscScan link, receipt verification, and the corresponding pre-trade decision record.
 5. The project includes a firsthand Developer Experience Report with measured API onboarding, failures, latency, and tokenized-stock observations.
@@ -35,8 +35,8 @@ This is an execution and monitoring tool, not a source of investment recommendat
 | P0-3 | Distinguish ordinary market closure from asset/market pause or corporate action. | `ASSET_PAUSED`, `MARKET_PAUSED`, maintenance, and unsupported states always block execution. |
 | P0-4 | Obtain a fresh executable quote and report output amount, route, price impact if supplied, estimated fee, quote age, and expiry. | Quote refreshes before transaction build; expired quote never executes. |
 | P0-5 | Apply user-set caps: allowlist, max per trade, max daily spend, slippage, quote impact, cooldown, and outside-hours opt-in. | Policy returns stable reason codes; at least one blocked case shown. |
-| P0-6 | Build and simulate each transaction before signing or broadcast. | Simulation status and predicted balance changes appear beside the proposed action. |
-| P0-7 | User signs the first live trade from their own wallet; verify the receipt and balances. | Small BSC mainnet transaction and explorer link. |
+| P0-6 | Build and simulate any required approval transaction; verify the RFQ typed order against the quote and policy before signing. | Approval simulation and RFQ order checks appear beside the proposed action. |
+| P0-7 | User signs the approval if needed and the RFQ EIP-712 order; verify order status and settled balances. | Small BSC mainnet order with transaction/explorer evidence when settled. |
 | P0-8 | Record every decision, including no-trade decisions, with input timestamps, source, policy version, alternatives, and result. | Public read-only decision page works for judges. |
 
 ## P1 requirements: add only after the P0 live path works
@@ -58,8 +58,8 @@ The agent observes all day. It decides whether execution is allowed from **both*
 
 | State | Default action | Conditions to trade |
 | --- | --- | --- |
-| `regular` | Consider a drift-triggered rebalance. | Fresh quote, user caps, simulation success. |
-| `premarket`, `postmarket`, `overnight` | Wait by default. | Explicit outside-hours opt-in, smaller cap, tighter slippage and impact limits, fresh quote, simulation success. |
+| `regular` | Consider a drift-triggered rebalance. | Fresh quote, user caps, route-specific preflight success. |
+| `premarket`, `postmarket`, `overnight` | Wait by default. | Explicit outside-hours opt-in, smaller cap, tighter slippage and impact limits, fresh quote, route-specific preflight success. |
 | `closed` from weekend/holiday | Monitor, log, and queue. | Explicit weekend opt-in and the same stricter checks; otherwise wait until `nextOpenTime`. |
 | `pause`, `ASSET_PAUSED`, `MARKET_PAUSED`, maintenance, unsupported | Block. | Never execute until a later fresh status is clear. |
 
@@ -67,15 +67,15 @@ Proposed demo defaults, **not universal safe values**: $10 maximum regular-sessi
 
 ## Decision output contract
 
-Each run returns one of `TRADE`, `WAIT`, `BLOCK` plus ordered reason codes such as `DRIFT_BELOW_THRESHOLD`, `MARKET_CLOSED_OPT_OUT`, `ASSET_PAUSED`, `NO_ROUTE`, `QUOTE_EXPIRED`, `SLIPPAGE_CAP`, `DAILY_CAP`, `SIMULATION_FAILED`, or `READY_TO_SIGN`. The app shows the data and thresholds behind each code. A language model can rephrase the explanation but cannot change the action.
+Each run returns one of `TRADE`, `WAIT`, `BLOCK` plus reason codes such as `DRIFT_BELOW_THRESHOLD`, `CLOSED_HOURS_OPT_OUT`, `ASSET_RESTRICTED`, `NO_ROUTE`, `QUOTE_EXPIRED`, `SLIPPAGE_CAP`, `DAILY_CAP`, `PREFLIGHT_FAILED`, or `READY_TO_SIGN`. The app shows the data and thresholds behind each code. A language model can rephrase the explanation but cannot change the action.
 
 ## User journey
 
 1. **Explore:** view the live session board and public sample decisions without connecting a wallet.
 2. **Set policy:** connect wallet, pick one or two stocks, target weights, and bounded trading preferences.
 3. **Watch:** see current session, next open, basket drift, quote state, and agent status.
-4. **Review:** inspect the proposed action, rejected alternatives, limits, simulation, and issuer details.
-5. **Act:** sign or decline the initial live transaction. Later, an optional Agentic Wallet mode may allow bounded execution.
+4. **Review:** inspect the proposed action, rejected alternatives, limits, approval simulation if required, RFQ typed order, and issuer details.
+5. **Act:** sign or decline the initial approval and RFQ order. Later, an optional Agentic Wallet mode may allow bounded execution.
 6. **Audit:** inspect the decision and transaction receipt together.
 
 ## Non-goals and constraints

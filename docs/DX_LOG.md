@@ -19,7 +19,7 @@ The hackathon requires a specific, honest Developer Experience Report and says g
 
 ## Tokenized-stock field observations
 
-Record the actual ticker, issuer, chain, session, quote time, requested size, route, expected output, simulation, and settled output for every sampled trade or failed quote. Compare regular, extended, and closed sessions only when you have observed each. Describe the `referencePrice` field accurately: the published API docs define it as derived from on-chain token price, not an independent stock-exchange quote.
+Record the actual ticker, issuer, chain, session, quote time, requested size, RFQ vendor, expected output, approval simulation if any, order status, and settled output for every sampled trade or failed quote. Compare regular, extended, and closed sessions only when you have observed each. Describe the `referencePrice` field accurately: the published API docs define it as derived from on-chain token price, not an independent stock-exchange quote.
 
 ## AI wallet and agent stack observations
 

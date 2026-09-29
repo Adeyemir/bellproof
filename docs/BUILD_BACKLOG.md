@@ -8,7 +8,7 @@ This is the build order for the 11 October submission. Each ticket has a visible
 | --- | --- | --- | ---: |
 | B01 | Register for the event and create Binance Web3 API credentials. Start the firsthand DX log with timestamps. | Credentials are available to the server environment; no secret appears in source control or logs. | 1–3 h, subject to account access |
 | B02 | Build a small server-only API client with the exact signed `/build` request path, raw query ordering, timestamp, and typed error handling. | Successful signed RWA platform and token search calls; 401 and 429 cases recorded without leaking secrets. | 3–5 h |
-| B03 | Discover candidate BSC bStocks/Ondo tokens and query at least one small USDT-to-token route. Measure quote latency, expiry, and output. | Save a redacted live response and select a demonstrably routable token; no hardcoded sample address in the live path. | 3–6 h |
+| B03 | Discover candidate BSC bStocks/Ondo tokens and query at least one small USDT-to-token RFQ route with the user's wallet address. Measure quote latency, expiry, and output. | Save a redacted live response and select a demonstrably routable token; no hardcoded sample address in the live path. | 3–6 h |
 
 **Gate:** If B03 cannot produce a live route by 30 September, ask organizers for token/route guidance and keep the product read-only while diagnosing. Do not build a trade UI on fictional liquidity.
 
@@ -25,9 +25,9 @@ This is the build order for the 11 October submission. Each ticket has a visible
 
 | Ticket | Implementation | Acceptance | Estimate |
 | --- | --- | --- | ---: |
-| B08 | Build swap and exact-amount approval transactions from a fresh quote; verify chain, token, recipient, and spender. | Displayed transaction fields match the data submitted for wallet signature. | 6–10 h |
-| B09 | Simulate before signing and record predicted balance/allowance changes. | Failed simulation blocks the action and appears in the decision record. | 4–6 h |
-| B10 | Connect a BSC wallet for owner-signed P0 execution, verify transaction receipt and actual balance change. | One small spot mainnet trade links to BscScan and its pre-trade decision. | 8–12 h plus wallet funding |
+| B08 | Build RFQ EIP-712 typed order from a fresh quote and the vendor-specific exact-amount approval if needed; verify chain, token, recipient, spender, amount, and expiry. | Displayed order/approval fields match what the wallet signs. | 6–10 h |
+| B09 | Simulate any on-chain approval transaction and validate RFQ order contents before signing. | Failed approval simulation or typed-order mismatch blocks the action and appears in the decision record. | 4–6 h |
+| B10 | Connect a BSC wallet for owner-signed P0 RFQ execution; submit signed order and verify order status, settlement transaction, and balance change. | One small spot mainnet order links to its pre-trade decision and settlement evidence. | 8–12 h plus wallet funding |
 | B11 | Add scheduler idempotency and a final status/quote/cap check before execution. | Retry cannot duplicate a trade; session change, expired quote, or pause blocks execution. | 5–8 h |
 
 ## Gate 3: differentiation and submission
@@ -42,9 +42,9 @@ This is the build order for the 11 October submission. Each ticket has a visible
 
 - Unit checks for the pure policy evaluator: regular session, ordinary closure, explicit outside-hours opt-in, corporate-action pause, stale/expired quote, cap breach, and no route.
 - Integration check of Binance signing using the actual raw URL and body. Record request IDs and redacted error responses.
-- Transaction check against a small live amount on BSC mainnet, followed by receipt and balance verification.
+- RFQ order check against a small live amount on BSC mainnet, followed by order status, settlement receipt, and balance verification.
 - Replay a saved observation through the same decision engine and verify the action/reason codes match. Label replay data clearly.
-- Manual clean-browser judge rehearsal: start at the public landing page, inspect a decision, connect wallet, quote, simulate, sign, inspect BscScan.
+- Manual clean-browser judge rehearsal: start at the public landing page, inspect a decision, connect wallet, quote, review approval simulation and RFQ order, sign, inspect order status and BscScan.
 
 ## Tasks that need human participation
 
