@@ -20,3 +20,5 @@ npm run build
 ```
 
 RFQ previews do not sign, submit, or broadcast an order. The transaction API can simulate an on-chain approval transaction when the execution flow is added; the RFQ order itself needs typed-order validation and status tracking.
+
+If the UI cannot reach Binance, run `npm run smoke:binance` from a Terminal with normal internet access. It makes one signed NVDA search and prints status, latency, and public token metadata without printing credentials.
