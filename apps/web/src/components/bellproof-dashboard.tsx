@@ -85,9 +85,9 @@ const explanations: Record<DecisionReason, string> = {
 };
 
 const actionStyles: Record<DecisionAction, string> = {
-  TRADE: "border-lime-400/40 bg-lime-400/10 text-lime-300",
-  WAIT: "border-amber-400/40 bg-amber-400/10 text-amber-200",
-  BLOCK: "border-rose-400/40 bg-rose-400/10 text-rose-200",
+  TRADE: "is-trade",
+  WAIT: "is-wait",
+  BLOCK: "is-block",
 };
 
 const sessions: MarketSession[] = [
@@ -273,118 +273,130 @@ export function BellproofDashboard() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 pb-16 pt-6 sm:px-8 lg:px-12">
-      <header className="flex items-center justify-between border-b border-white/10 pb-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-lime-300/40 bg-lime-300/10 text-xl font-bold text-lime-300">B</div>
-          <div>
-            <p className="text-lg font-bold tracking-tight">Bellproof</p>
-            <p className="text-xs text-white/45">Policy-controlled execution for BSC stocks</p>
-          </div>
-        </div>
-        <div className="rounded-full border border-lime-300/25 bg-lime-300/5 px-3 py-1 text-xs font-medium text-lime-300">Prototype · BSC mainnet</div>
+    <main className="app-shell">
+      <header className="site-header">
+        <a className="brand" href="#" aria-label="Bellproof home">
+          <span className="brand-icon" aria-hidden="true" />
+          <span className="brand-name">Bellproof<span>.</span></span>
+        </a>
+        <nav className="site-nav" aria-label="Main navigation">
+          <a href="#market">Market desk</a>
+          <a href="#policy">Policy lab</a>
+        </nav>
+        <span className="network-pill"><span className="network-dot" />BSC MAINNET <span>/ 56</span></span>
       </header>
 
-      <section className="grid gap-8 py-14 lg:grid-cols-[1.4fr_0.6fr] lg:items-end">
-        <div>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.26em] text-lime-300">Propose · verify · execute · record</p>
-          <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-6xl">
-            Keep your stock basket <span className="text-lime-300">within policy.</span>
-          </h1>
-          <p className="mt-6 max-w-2xl text-base leading-7 text-white/60">
-            Bellproof proposes a rebalance from portfolio drift. Its deterministic policy checks the market session, asset restrictions, route quality, and user limits before any execution.
-          </p>
+      <section className="hero" aria-labelledby="hero-title">
+        <div className="hero-copy">
+          <p className="eyebrow"><span /> TOKENIZED STOCKS / EXECUTION POLICY</p>
+          <h1 id="hero-title">Keep your stock basket <em>within policy.</em></h1>
+          <p className="hero-description">Bellproof proposes a rebalance, checks real market conditions, and explains whether to trade, wait, or block. Every decision has a reason.</p>
+          <div className="hero-actions">
+            <a className="button button-dark" href="#market">Explore market data <span aria-hidden="true">↗</span></a>
+            <a className="text-link" href="#policy">Try the policy lab <span aria-hidden="true">↗</span></a>
+          </div>
+          <p className="hero-footnote">SPOT ONLY <span>/</span> BSC CHAIN 56 <span>/</span> NO TRANSACTION FROM THIS PAGE</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm leading-6 text-white/60">
-          <p className="mb-2 font-semibold text-white">Current build</p>
-          <p>RWA discovery, wallet-balance proposals, and RFQ preview are wired to the Binance Web3 API but await a successful upstream call. The proposal lab below uses labelled sample inputs. Wallet execution and settlement verification are the next gate.</p>
-        </div>
+        <aside className="hero-preview" aria-label="Sample policy decision">
+          <div className="preview-top"><span>DECISION PREVIEW</span><span className="preview-sample">SAMPLE INPUTS</span></div>
+          <div className="preview-content">
+            <p>BELLPROOF POLICY / CURRENT RESULT</p>
+            <strong className={"preview-action " + (decision ? actionStyles[decision.action] : "is-block")}>{decision?.action ?? "INVALID"}<span>.</span></strong>
+            <h2>{decision?.reason.replaceAll("_", " ") ?? "INVALID SAMPLE INPUT"}</h2>
+            <p>{decision ? explanations[decision.reason] : "Enter valid sample inputs in the policy lab."}</p>
+          </div>
+          <div className="preview-metrics">
+            <div><span>PROPOSAL</span><strong>{proposal?.side ?? "—"}</strong></div>
+            <div><span>DRIFT</span><strong>{proposal ? (proposal.driftBps / 100).toFixed(2) + "%" : "—"}</strong></div>
+            <div><span>TRIGGER</span><strong>3.00%</strong></div>
+          </div>
+        </aside>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-3xl border border-white/10 bg-[#121a19] p-6 sm:p-8" aria-labelledby="market-heading">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-lime-300">01 / Live data</p>
-              <h2 id="market-heading" className="mt-3 text-2xl font-semibold tracking-tight">Find the real BSC asset</h2>
-            </div>
-            <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/50">Binance RWA Data</span>
+      <div className="process-strip" aria-label="How Bellproof works">
+        <div><span>01</span><strong>Observe</strong><p>Wallet, issuer, session</p></div>
+        <div><span>02</span><strong>Propose</strong><p>Target versus actual weight</p></div>
+        <div><span>03</span><strong>Verify</strong><p>Route and policy gates</p></div>
+      </div>
+
+      <div className="workspace-heading">
+        <div><span className="section-kicker">THE WORKSPACE</span><h2>From token to decision.</h2></div>
+        <p>Inspect the market, then test how Bellproof responds.</p>
+      </div>
+
+      <div className="workspace-grid">
+        <section id="market" className="workspace-panel market-panel" aria-labelledby="market-heading">
+          <div className="panel-header">
+            <div><span className="panel-index">01 / LIVE DATA</span><h3 id="market-heading">Market desk</h3><p>Find a tokenized stock on BSC and inspect its current trading state.</p></div>
+            <span className="panel-tag">BINANCE RWA</span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-white/55">Searches exact tickers, keeps bStocks and Ondo contracts on chain 56, then reads each underlying market session. A wallet address can also produce a live basket proposal.</p>
-          <form onSubmit={lookUpMarket} className="mt-7 flex gap-3">
-            <label htmlFor="ticker" className="sr-only">Stock ticker</label>
-            <input id="ticker" value={ticker} onChange={(event) => setTicker(event.target.value.toUpperCase())} maxLength={10} placeholder="Ticker, e.g. NVDA" className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#0b1110] px-4 py-3 text-base font-medium uppercase outline-none placeholder:normal-case placeholder:text-white/30 focus:border-lime-300/60" />
-            <button disabled={loading} type="submit" className="rounded-xl bg-lime-300 px-5 py-3 text-sm font-bold text-[#122015] transition hover:bg-lime-200 disabled:opacity-50">{loading ? "Checking…" : "Check ticker"}</button>
+          <form onSubmit={lookUpMarket} className="ticker-form">
+            <label htmlFor="ticker">STOCK TICKER</label>
+            <div className="ticker-row">
+              <input id="ticker" value={ticker} onChange={(event) => setTicker(event.target.value.toUpperCase())} maxLength={10} placeholder="e.g. NVDA" autoComplete="off" className="text-input ticker-input" />
+              <button disabled={loading} type="submit" className="button button-gold">{loading ? "Checking…" : "Check ticker"} <span aria-hidden="true">↗</span></button>
+            </div>
           </form>
-          <div aria-live="polite" className="mt-6 min-h-24">
-            {marketError && <div className="rounded-xl border border-amber-300/25 bg-amber-300/5 p-4 text-sm text-amber-100">{marketError}{marketErrorCode === "CREDENTIALS_MISSING" && <p className="mt-2 text-xs text-amber-100/65">For local setup, copy apps/web/.env.example to apps/web/.env.local and add your Binance Web3 API credentials.</p>}</div>}
-            {market && market.candidates.length === 0 && <div className="rounded-xl border border-white/10 p-4 text-sm text-white/55">No supported bStocks or Ondo contract for {ticker.toUpperCase()} was returned on BSC. Try another ticker.</div>}
-            {market && market.candidates.length > 0 && <div className="space-y-3">{market.candidates.map((candidate) => (
-              <article key={`${candidate.platformId}:${candidate.tokenContractAddress}`} className="rounded-xl border border-white/10 bg-black/15 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-semibold">{candidate.companyName || candidate.ticker} <span className="text-white/45">· {candidate.tokenSymbol}</span></p><p className="mt-1 text-xs uppercase tracking-widest text-lime-300">{candidate.platformId}</p></div><span className="rounded-full border border-white/15 px-3 py-1 text-xs capitalize text-white/75">{candidate.session}</span></div>
-                <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2"><div><dt className="text-white/40">Underlying open</dt><dd className="mt-1">{candidate.openState ? "Yes" : "No"}</dd></div><div><dt className="text-white/40">Restriction</dt><dd className="mt-1">{candidate.restrictionReason ?? "None reported"}</dd></div><div><dt className="text-white/40">Next open</dt><dd className="mt-1">{formatTime(candidate.nextOpenTimeMs)}</dd></div><div><dt className="text-white/40">Token-to-share ratio</dt><dd className="mt-1">{candidate.tokenToShareRatio ?? "Unavailable"}</dd></div><div className="sm:col-span-2"><dt className="text-white/40">Contract</dt><dd className="mt-1 break-all font-mono">{candidate.tokenContractAddress}</dd></div></dl>
-                {candidate.restrictionMessage && <p className="mt-3 text-xs text-amber-200">{candidate.restrictionMessage}</p>}
-                {candidate.profileUnavailable && <p className="mt-3 text-xs text-amber-200">Issuer profile could not be fetched.</p>}
-                {candidate.attestations.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{candidate.attestations.map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer" className="rounded border border-white/15 px-2 py-1 text-xs text-lime-300 hover:bg-lime-300/10">{link.label.replaceAll(/([A-Z])/g, " $1").trim()} ↗</a>)}</div>}
-                <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={quoteLoading} onClick={() => fetchQuote(candidate)} className="rounded-lg border border-lime-300/35 px-3 py-2 text-xs font-semibold text-lime-300 hover:bg-lime-300/10 disabled:opacity-50">{quoteLoading ? "Requesting…" : "Get RFQ routes"}</button><button type="button" disabled={portfolioLoading} onClick={() => fetchPortfolio(candidate)} className="rounded-lg border border-white/25 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/5 disabled:opacity-50">{portfolioLoading ? "Reading…" : "Propose from my basket"}</button></div>
-              </article>
-            ))}<p className="pt-1 text-xs text-white/40">Response checked {formatTime(market.observedAtMs)}. Session status is informational; execution needs a new quote and the correct RFQ signing flow.</p></div>}
-            {!market && !marketError && !loading && <p className="text-sm text-white/35">Enter a ticker to inspect the currently available BSC representation.</p>}
+          <div aria-live="polite" className="market-results">
+            {marketError && <div className="message message-error">{marketError}{marketErrorCode === "CREDENTIALS_MISSING" && <p>For local setup, add your Binance Web3 credentials to apps/web/.env.local.</p>}</div>}
+            {market && market.candidates.length === 0 && <div className="empty-state"><span>○</span><strong>No supported token found</strong><p>No bStocks or Ondo contract for {ticker.toUpperCase()} was returned on BSC. Try another ticker.</p></div>}
+            {market && market.candidates.length > 0 && <div className="candidate-list">
+              {market.candidates.map((candidate) => (
+                <article key={candidate.platformId + ":" + candidate.tokenContractAddress} className="candidate-card">
+                  <div className="candidate-top"><div><span className="issuer-label">{candidate.platformId.toUpperCase()}</span><h4>{candidate.companyName || candidate.ticker}<small> / {candidate.tokenSymbol}</small></h4></div><span className="session-pill">{candidate.session}</span></div>
+                  <div className="candidate-facts">
+                    <div><span>UNDERLYING OPEN</span><strong>{candidate.openState ? "Yes" : "No"}</strong></div>
+                    <div><span>RESTRICTION</span><strong>{candidate.restrictionReason ?? "None reported"}</strong></div>
+                    <div><span>NEXT OPEN</span><strong>{formatTime(candidate.nextOpenTimeMs)}</strong></div>
+                    <div><span>TOKEN / SHARE</span><strong>{candidate.tokenToShareRatio ?? "Unavailable"}</strong></div>
+                  </div>
+                  <p className="contract-line"><span>CONTRACT</span><code>{candidate.tokenContractAddress}</code></p>
+                  {candidate.restrictionMessage && <p className="candidate-warning">{candidate.restrictionMessage}</p>}
+                  {candidate.profileUnavailable && <p className="candidate-warning">Issuer profile could not be fetched.</p>}
+                  {candidate.attestations.length > 0 && <div className="attestations">{candidate.attestations.map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer">{link.label.replaceAll(/([A-Z])/g, " $1").trim()} ↗</a>)}</div>}
+                  <div className="candidate-actions"><button type="button" disabled={quoteLoading} onClick={() => fetchQuote(candidate)} className="button button-outline">{quoteLoading ? "Requesting…" : "Get RFQ routes"}</button><button type="button" disabled={portfolioLoading} onClick={() => fetchPortfolio(candidate)} className="button button-quiet">{portfolioLoading ? "Reading…" : "Propose from basket"}</button></div>
+                </article>
+              ))}
+              <p className="source-note">Observed {formatTime(market.observedAtMs)}. A fresh quote and route checks are required before execution.</p>
+            </div>}
+            {!market && !marketError && !loading && <div className="empty-state"><span>↗</span><strong>Start with a ticker</strong><p>Search an equity symbol to see its BSC token, issuer, and market session.</p></div>}
           </div>
-          {market && market.candidates.length > 0 && <div className="mt-6 border-t border-white/10 pt-5">
-            <p className="text-sm font-semibold">Live RFQ preview</p>
-            <p className="mt-1 text-xs leading-5 text-white/45">Equity routes require a wallet address even for a quote. No wallet connection, approval, or order is made here.</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_7rem_7rem]">
-              <label className="text-xs text-white/50">Your BSC wallet address<input value={walletAddress} onChange={(event) => setWalletAddress(event.target.value)} placeholder="0x…" autoComplete="off" className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 font-mono text-xs text-white outline-none focus:border-lime-300/60" /></label>
-              <label className="text-xs text-white/50">USDT amount<input type="number" min="0.01" max="10" step="0.01" value={quoteAmount} onChange={(event) => setQuoteAmount(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 text-sm text-white outline-none focus:border-lime-300/60" /></label>
-              <label className="text-xs text-white/50">Stock target · %<input type="number" min="0" max="100" step="0.01" value={liveTargetWeight} onChange={(event) => setLiveTargetWeight(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 text-sm text-white outline-none focus:border-lime-300/60" /></label>
+
+          {market && market.candidates.length > 0 && <div className="wallet-tools">
+            <div className="subsection-header"><div><span className="section-kicker">READ-ONLY TOOLS</span><h4>Quote and basket preview</h4></div><span className="read-only-pill">NO SIGNATURE</span></div>
+            <p className="subsection-description">Enter a BSC wallet address to inspect a route or calculate allocation drift. Nothing is submitted.</p>
+            <div className="field-grid wallet-fields">
+              <label className="field"><span>WALLET ADDRESS</span><input value={walletAddress} onChange={(event) => setWalletAddress(event.target.value)} placeholder="0x…" autoComplete="off" className="text-input mono-input" /></label>
+              <label className="field"><span>USDT QUOTE SIZE</span><input type="number" min="0.01" max="10" step="0.01" value={quoteAmount} onChange={(event) => setQuoteAmount(event.target.value)} className="text-input" /></label>
+              <label className="field"><span>STOCK TARGET %</span><input type="number" min="0" max="100" step="0.01" value={liveTargetWeight} onChange={(event) => setLiveTargetWeight(event.target.value)} className="text-input" /></label>
             </div>
-            <div aria-live="polite" className="mt-4">
-              {quoteError && <p className="rounded-lg border border-amber-300/25 bg-amber-300/5 p-3 text-xs text-amber-100">{quoteError}</p>}
-              {quote && <div className="rounded-xl border border-white/10 bg-black/15 p-4 text-xs"><p className="font-semibold text-white">{quote.tokenSymbol} · {quote.platformId} · {quote.session}</p><p className="mt-1 text-white/40">{quote.routes.length} RFQ route(s) · received {formatTime(quote.receivedAtMs)} · estimated 30-second lifetime</p>{quote.routes.length === 0 && <p className="mt-3 text-amber-200">No valid RFQ route returned for this amount and wallet.</p>}{quote.routes.map((route) => <div key={route.quoteId} className="mt-3 border-t border-white/10 pt-3"><p className="font-semibold text-lime-300">{route.vendorName} · ≈ {formatTokenAmount(route.outputAmount, route.outputDecimals)} {route.outputSymbol}</p><p className="mt-1 text-white/50">Impact: {route.priceImpactBps === null ? "Unavailable" : `${route.priceImpactBps.toFixed(2)} bps`} · Fee: {route.tradeFeeUsd === null ? "Unavailable" : `$${route.tradeFeeUsd}`}</p><p className="mt-1 break-all font-mono text-white/30">Quote ID: {route.quoteId}</p></div>)}</div>}
-            </div>
-            <div aria-live="polite" className="mt-4">
-              {portfolioError && <p className="rounded-lg border border-amber-300/25 bg-amber-300/5 p-3 text-xs text-amber-100">{portfolioError}</p>}
-              {portfolio && <div className="rounded-xl border border-white/10 bg-black/15 p-4 text-xs"><p className="font-semibold text-white">Live basket proposal · {portfolio.tokenSymbol}</p><p className="mt-2 text-white/55">Stock ${(portfolio.stockValueCents / 100).toFixed(2)} · USDT ${(portfolio.stableValueCents / 100).toFixed(2)} · target {(portfolio.proposal.targetStockWeightBps / 100).toFixed(2)}%</p><p className="mt-2 font-semibold text-lime-300">{portfolio.proposal.side === "HOLD" ? "HOLD" : `${portfolio.proposal.side} approximately $${(portfolio.proposal.proposedTradeCents / 100).toFixed(2)}`} · {portfolio.proposal.reason.replaceAll("_", " ")}</p><p className="mt-2 text-white/40">Valued with {portfolio.valuationSource} at {formatTime(portfolio.observedAtMs)}. A fresh executable quote, policy review, and route preflight are still required. This proposal does not place an order.</p></div>}
+            <div aria-live="polite" className="tool-results">
+              {quoteError && <p className="message message-error">{quoteError}</p>}
+              {quote && <div className="result-card"><div className="result-top"><strong>RFQ routes / {quote.tokenSymbol}</strong><span>{quote.routes.length} ROUTE(S)</span></div><p className="result-meta">{quote.platformId} · {quote.session} · received {formatTime(quote.receivedAtMs)} · estimated 30-second lifetime</p>{quote.routes.length === 0 && <p className="candidate-warning">No valid RFQ route returned for this amount and wallet.</p>}{quote.routes.map((route) => <div key={route.quoteId} className="route-row"><strong>{route.vendorName} / ≈ {formatTokenAmount(route.outputAmount, route.outputDecimals)} {route.outputSymbol}</strong><p>Impact: {route.priceImpactBps === null ? "Unavailable" : route.priceImpactBps.toFixed(2) + " bps"} · Fee: {route.tradeFeeUsd === null ? "Unavailable" : "$" + route.tradeFeeUsd}</p><code>Quote ID: {route.quoteId}</code></div>)}</div>}
+              {portfolioError && <p className="message message-error">{portfolioError}</p>}
+              {portfolio && <div className="result-card"><div className="result-top"><strong>Basket proposal / {portfolio.tokenSymbol}</strong><span>LIVE WALLET READ</span></div><p className="result-meta">Stock {"$"}{(portfolio.stockValueCents / 100).toFixed(2)} · USDT {"$"}{(portfolio.stableValueCents / 100).toFixed(2)} · target {(portfolio.proposal.targetStockWeightBps / 100).toFixed(2)}%</p><p className="result-emphasis">{portfolio.proposal.side === "HOLD" ? "HOLD" : portfolio.proposal.side + " ≈ $" + (portfolio.proposal.proposedTradeCents / 100).toFixed(2)} <span>/ {portfolio.proposal.reason.replaceAll("_", " ")}</span></p><p className="result-meta">Valued with {portfolio.valuationSource} at {formatTime(portfolio.observedAtMs)}. A fresh route and policy review are still required.</p></div>}
             </div>
           </div>}
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-[#121a19] p-6 sm:p-8" aria-labelledby="policy-heading">
-          <div className="flex items-start justify-between gap-4">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-lime-300">02 / Proposal lab</p><h2 id="policy-heading" className="mt-3 text-2xl font-semibold tracking-tight">Propose, then verify</h2></div>
-            <span className="rounded-full border border-amber-300/25 bg-amber-300/5 px-3 py-1 text-xs text-amber-200">Simulation</span>
+        <section id="policy" className="workspace-panel policy-panel" aria-labelledby="policy-heading">
+          <div className="panel-header"><div><span className="panel-index">02 / SIMULATION</span><h3 id="policy-heading">Policy lab</h3><p>Change sample conditions to see when the same rule set waits or blocks.</p></div><span className="panel-tag panel-tag-sample">SAMPLE INPUTS</span></div>
+          <div className="field-grid policy-fields">
+            <label className="field"><span>MARKET SESSION</span><select value={session} onChange={(event) => setSession(event.target.value as MarketSession)} className="text-input">{sessions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label className="field"><span>BASKET VALUE / USD</span><input type="number" min="0" max="100000" step="0.01" value={basketValue} onChange={(event) => setBasketValue(event.target.value)} className="text-input" /></label>
+            <label className="field"><span>CURRENT STOCK WEIGHT %</span><input type="number" min="0" max="100" step="0.01" value={currentWeight} onChange={(event) => setCurrentWeight(event.target.value)} className="text-input" /></label>
+            <label className="field"><span>TARGET STOCK WEIGHT %</span><input type="number" min="0" max="100" step="0.01" value={targetWeight} onChange={(event) => setTargetWeight(event.target.value)} className="text-input" /></label>
+            <label className="field"><span>PRICE IMPACT / BPS</span><input type="number" min="0" max="10000" step="1" value={impact} onChange={(event) => setImpact(event.target.value)} className="text-input" /></label>
+            <label className="field"><span>ROUTE PREFLIGHT</span><select value={preflight} onChange={(event) => setPreflight(event.target.value as typeof preflight)} className="text-input"><option value="NOT_RUN">Not run</option><option value="SUCCESS">Passed (sample)</option><option value="FAILED">Failed (sample)</option></select></label>
           </div>
-          <p className="mt-3 text-sm leading-6 text-white/55">Change hypothetical holdings and market conditions. The agent calculates a rebalance; the deterministic policy decides whether it may proceed. No transaction is sent.</p>
-          <div className="mt-7 grid gap-4 sm:grid-cols-2">
-            <label className="block text-xs text-white/50">Underlying session<select value={session} onChange={(event) => setSession(event.target.value as MarketSession)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 text-sm capitalize text-white outline-none focus:border-lime-300/60">{sessions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-            <label className="block text-xs text-white/50">Basket value · USD<input type="number" min="0" max="100000" step="0.01" value={basketValue} onChange={(event) => setBasketValue(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 text-sm text-white outline-none focus:border-lime-300/60" /></label>
-            <label className="block text-xs text-white/50">Current stock weight · %<input type="number" min="0" max="100" step="0.01" value={currentWeight} onChange={(event) => setCurrentWeight(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 text-sm text-white outline-none focus:border-lime-300/60" /></label>
-            <label className="block text-xs text-white/50">Target stock weight · %<input type="number" min="0" max="100" step="0.01" value={targetWeight} onChange={(event) => setTargetWeight(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 text-sm text-white outline-none focus:border-lime-300/60" /></label>
-            <label className="block text-xs text-white/50">Price impact · basis points<input type="number" min="0" max="10000" step="1" value={impact} onChange={(event) => setImpact(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 text-sm text-white outline-none focus:border-lime-300/60" /></label>
-            <label className="block text-xs text-white/50">Route preflight<select value={preflight} onChange={(event) => setPreflight(event.target.value as typeof preflight)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#0b1110] px-3 py-3 text-sm text-white outline-none focus:border-lime-300/60"><option value="NOT_RUN">Not run</option><option value="SUCCESS">Passed (sample)</option><option value="FAILED">Failed (sample)</option></select></label>
-          </div>
-          <div className="mt-7 rounded-2xl border border-white/10 bg-black/15 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/45">Agent proposal</p>
-            <p className="mt-3 text-xl font-semibold text-white">{proposal?.side === "HOLD" ? "No rebalance proposed" : proposal ? `${proposal.side} $${(proposal.proposedTradeCents / 100).toFixed(2)} of ${ticker || "stock token"}` : "Invalid sample inputs"}</p>
-            <p className="mt-2 text-sm text-white/55">{proposal ? `Current ${(proposal.currentStockWeightBps / 100).toFixed(2)}% · target ${(proposal.targetStockWeightBps / 100).toFixed(2)}% · drift ${(proposal.driftBps / 100).toFixed(2)} percentage points` : "Enter a valid basket value and weights from 0% to 100%."}</p>
-            {proposal?.reason === "REBALANCE_REQUIRED" && <p className="mt-2 text-xs text-lime-300">Drift exceeds the 3% proposal threshold.</p>}
-          </div>
-          <div className="mt-5 space-y-3 text-sm text-white/70">
-            <label className="flex cursor-pointer items-center gap-3"><input type="checkbox" checked={allowExtended} onChange={(event) => setAllowExtended(event.target.checked)} className="accent-lime-300" />Allow premarket, postmarket, and overnight</label>
-            <label className="flex cursor-pointer items-center gap-3"><input type="checkbox" checked={allowClosed} onChange={(event) => setAllowClosed(event.target.checked)} className="accent-lime-300" />Allow trading while the underlying is closed</label>
-            <label className="flex cursor-pointer items-center gap-3"><input type="checkbox" checked={paused} onChange={(event) => setPaused(event.target.checked)} className="accent-lime-300" />Issuer or market pause reported</label>
-          </div>
-          <div aria-live="polite" className={`mt-7 rounded-2xl border p-5 ${decision ? actionStyles[decision.action] : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
-            <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.2em]">Decision</p><p className="text-2xl font-bold">{decision?.action ?? "INVALID"}</p></div>
-            <p className="mt-3 text-sm font-semibold">{decision?.reason.replaceAll("_", " ") ?? "Invalid sample input"}</p>
-            <p className="mt-1 text-sm opacity-80">{decision ? explanations[decision.reason] : "Enter valid sample inputs."}</p>
-          </div>
-          <p className="mt-4 text-xs leading-5 text-white/35">Sample limits: 3% drift threshold, $10 regular, $3 outside regular hours, $20 daily, 50 bps impact. A “TRADE” result means policy eligible to sign; no trade is placed.</p>
+          <div className="toggle-group"><span className="group-label">SESSION PREFERENCES</span><label><input type="checkbox" checked={allowExtended} onChange={(event) => setAllowExtended(event.target.checked)} />Allow premarket, postmarket, and overnight</label><label><input type="checkbox" checked={allowClosed} onChange={(event) => setAllowClosed(event.target.checked)} />Allow trading while the underlying is closed</label><label><input type="checkbox" checked={paused} onChange={(event) => setPaused(event.target.checked)} />Issuer or market pause reported</label></div>
+          <div className="proposal-card"><span className="output-label">01 / AGENT PROPOSAL</span><div className="proposal-title"><strong>{proposal?.side === "HOLD" ? "No rebalance proposed" : proposal ? proposal.side + " $" + (proposal.proposedTradeCents / 100).toFixed(2) + " of " + (ticker || "stock token") : "Invalid sample inputs"}</strong><span>{proposal?.side ?? "—"}</span></div><p>{proposal ? "Current " + (proposal.currentStockWeightBps / 100).toFixed(2) + "% · target " + (proposal.targetStockWeightBps / 100).toFixed(2) + "% · drift " + (proposal.driftBps / 100).toFixed(2) + " points" : "Enter a valid basket value and weights from 0% to 100%."}</p></div>
+          <div aria-live="polite" className={"decision-output " + (decision ? actionStyles[decision.action] : "is-block")}><div className="decision-top"><span>02 / POLICY DECISION</span><strong>{decision?.action ?? "INVALID"}</strong></div><h4>{decision?.reason.replaceAll("_", " ") ?? "INVALID SAMPLE INPUT"}</h4><p>{decision ? explanations[decision.reason] : "Enter valid sample inputs."}</p></div>
+          <p className="policy-footnote">Sample limits: 3% drift, $10 regular, $3 outside regular hours, $20 daily, 50 bps impact. “TRADE” means eligible to sign; this page never places an order.</p>
         </section>
       </div>
 
-      <footer className="mt-10 flex flex-col gap-2 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row sm:justify-between"><p>Bellproof · Tokenized Stocks Products &amp; Agents</p><p>Spot only · BSC chain 56 · No transaction sent from this page</p></footer>
+      <footer className="site-footer"><div><span className="footer-icon" aria-hidden="true" /><strong>Bellproof</strong><span> / Tokenized Stocks Products &amp; Agents</span></div><p>Policy first. Proof follows.</p></footer>
     </main>
   );
 }
