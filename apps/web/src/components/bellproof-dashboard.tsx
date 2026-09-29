@@ -288,9 +288,9 @@ export function BellproofDashboard() {
 
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">
-          <p className="eyebrow"><span /> TOKENIZED STOCKS / EXECUTION POLICY</p>
+          <p className="eyebrow"><span /> PROPOSE / VERIFY / EXECUTE / RECORD</p>
           <h1 id="hero-title">Keep your stock basket <em>within policy.</em></h1>
-          <p className="hero-description">Bellproof proposes a rebalance, checks real market conditions, and explains whether to trade, wait, or block. Every decision has a reason.</p>
+          <p className="hero-description">Bellproof proposes a rebalance from portfolio drift, then verifies whether it can execute. It checks the market session, asset restrictions, route quality, and user limits before any trade.</p>
           <div className="hero-actions">
             <a className="button button-dark" href="#market">Explore market data <span aria-hidden="true">↗</span></a>
             <a className="text-link" href="#policy">Try the policy lab <span aria-hidden="true">↗</span></a>
@@ -304,6 +304,7 @@ export function BellproofDashboard() {
             <strong className={"preview-action " + (decision ? actionStyles[decision.action] : "is-block")}>{decision?.action ?? "INVALID"}<span>.</span></strong>
             <h2>{decision?.reason.replaceAll("_", " ") ?? "INVALID SAMPLE INPUT"}</h2>
             <p>{decision ? explanations[decision.reason] : "Enter valid sample inputs in the policy lab."}</p>
+            <p className="preview-no-trade">No transaction submitted.</p>
           </div>
           <div className="preview-metrics">
             <div><span>PROPOSAL</span><strong>{proposal?.side ?? "—"}</strong></div>
