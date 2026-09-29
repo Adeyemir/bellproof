@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bellproof | Session-aware tokenized stock execution",
+  title: "Bellproof | Policy-controlled tokenized stock execution",
   description:
-    "Inspect BSC tokenized-stock market sessions and see why a rebalance should trade, wait, or block.",
+    "Keep a BSC stock-token basket within policy and inspect why Bellproof proposes, waits, or blocks a rebalance.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
