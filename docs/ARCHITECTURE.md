@@ -1,0 +1,105 @@
+# Bellproof architecture
+
+**Status:** proposed architecture; nothing in this document claims an implementation exists.
+
+## Design rule
+
+Keep trading decisions deterministic, with source data and thresholds visible. The agent can monitor and propose actions continuously; any autonomous execution must use an execution method that enforces the user's limits outside the language model.
+
+```mermaid
+flowchart LR
+  UI[Web app: policy, session board, decision record] --> API[Server API]
+  API --> DB[(Decisions and policies)]
+  API --> RWA[Binance RWA Data API]
+  API --> QUOTE[Binance Trading API]
+  API --> TX[Binance Transaction API]
+  WORKER[Scheduled agent run] --> API
+  API --> POLICY[Deterministic policy engine]
+  POLICY --> EXEC[Execution adapter]
+  EXEC --> USER[User wallet signature: P0]
+  EXEC --> BAW[Binance Agentic Wallet: gated P1]
+  USER --> BSC[BSC mainnet]
+  BAW --> BSC
+  BSC --> API
+```
+
+## Proposed stack
+
+- **App:** Next.js and TypeScript for the public dashboard, authenticated policy editor, and server API.
+- **Wallet:** a standard BSC wallet connector for P0 owner-signed transactions. Keep wallet code behind an adapter to allow Agentic Wallet later.
+- **State:** a small relational database for policies, decision snapshots, and receipt references. Never store wallet private keys.
+- **Scheduler:** one persistent job process or managed cron trigger that invokes the same decision service used by the UI. The job must be idempotent by policy, asset, and observation window.
+- **Data:** Binance Web3 RWA, Trading, Transaction, and Wallet APIs. A server-only client signs each request with the exact `/build` path and raw query/body bytes used on the wire.
+
+No infrastructure provider or AI model is committed at the planning stage. A language model is optional for readable summaries after the policy outcome is fixed.
+
+## Decision pipeline
+
+```text
+observe wallet and target weights
+  -> resolve the BSC token and issuer
+  -> read market status and restriction reason
+  -> compute allocation drift
+  -> request fresh executable quote(s)
+  -> compare alternatives and apply user policy
+  -> WAIT or BLOCK with evidence, or build transaction
+  -> simulate transaction
+  -> recheck quote age, status, and remaining caps
+  -> request user signature (P0) or bounded wallet execution (P1)
+  -> verify receipt and balances
+  -> append immutable decision/result record
+```
+
+The order matters. A quote is not an authorization. Simulation is not settlement. Every state change is saved with timestamps so the judge can see where a decision stopped.
+
+## External API mapping
+
+| Product need | Binance endpoint family | Notes |
+| --- | --- | --- |
+| Find same-ticker assets and issuer | RWA search, token list, underlying profile | Filter chain `56`; retain contract, issuer, decimals, `tokenToShareRatio`, and attestation links when present. |
+| Session and restriction state | RWA underlying market / token list `statusInfo` | Use API status and `nextOpenTime`, not a hand-coded US clock; closures, holidays, and corporate actions differ. |
+| Executable cost | Trading aggregated quote | A quote ID lasts about 30 seconds; compare output after share-ratio normalization and known fees. Present issuer rights and protections separately; equal share exposure does not imply legally equivalent tokens. No route means no trade. |
+| Transaction construction | Trading swap and approve transaction | Re-quote before construction, enforce spender/amount allowlist, and show exact requested approval. |
+| Preflight | Transaction simulation | Treat failure or missing expected balance changes as a block. |
+| Portfolio and post-trade state | Wallet balances / transaction status | Verify mined receipt and updated token balance before marking a trade complete. |
+
+References: [RWA](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/rest-api/rwa-data), [Trading](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/rest-api/trading-api), [Transaction](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/rest-api/transaction-api), [Wallet](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/rest-api/wallet-api).
+
+## Security and execution boundaries
+
+1. **Credentials:** Binance API key and secret stay on the server. Sign `timestamp + METHOD + /build/path?query + rawBody` using HMAC-SHA256, Base64 encoded. Never expose credentials in browser bundles, logs, or public decision records. [Binance authentication](https://web3.binance.com/en/dev-docs/authentication).
+2. **No private-key custody in P0:** the user signs the exact transaction in their wallet. The server can prepare and simulate but cannot move funds.
+3. **Allowlist and limits:** chain `56`, recognized token addresses, approved router/spender, exact or bounded ERC-20 approval, trade size, daily budget, slippage, quote impact, and cooldown are checked before and immediately before signing.
+4. **Fail closed:** unknown status, stale RWA data, stale quote, no route, simulation failure, unexpected approval target, or disagreement between expected and constructed transaction causes `BLOCK` or `WAIT`.
+5. **No AI authority:** a model may explain a decision from structured facts. It cannot choose an unapproved token, edit a cap, sign, or call execution directly.
+6. **Autonomous P1:** only add Binance Agentic Wallet after verifying the team's account setup, token scope, daily limits, and approval flow. Its security rules are configured in the Binance App, according to [its documentation](https://developers.binance.com/en/docs/products/agentic-wallet/quickstart/install-agentic-wallet).
+
+## Data records
+
+`Policy`: wallet address, chain, target weights, token/issuer allowlist, regular and outside-hours limits, cooldown, enabled sessions, version, updated time.
+
+`Observation`: observed time, source response time, ticker, contract, issuer, session, `openState`, reason code, next open, wallet balance, target drift, quote ID/time, route, output amount, price impact/fee fields if supplied.
+
+`Decision`: policy version, observation references, action, ordered reason codes, selected and rejected alternatives, expected exposure, simulation status, signer mode, immutable content hash, created time.
+
+`Execution`: decision ID, approval transaction if any, swap hash, receipt status, actual balance delta, verified time, failure reason.
+
+Public views redact wallet-sensitive details where appropriate but retain enough data and source links to reproduce the decision. A database decision hash is an audit aid; it is **not** an on-chain proof unless explicitly anchored in a transaction.
+
+## Failure and replay tests
+
+- Session moves from `regular` to `closed` between observation and signing: refresh state and wait.
+- Asset moves to `ASSET_PAUSED`: block even if an older quote exists.
+- Quote expires or route disappears: re-quote; never reuse an expired ID.
+- Approval spender or amount differs from what the UI displayed: block.
+- Simulation succeeds but the transaction reverts: record a failed execution, not a successful trade.
+- Scheduler retries the same window: idempotency key prevents duplicate orders.
+- Two issuer tokens represent different share ratios: normalize before comparison; never compare raw token counts.
+- API 401/429/5xx, timestamp drift, or missing fields: log a concise reason and wait without spending.
+
+## Open decisions to resolve with live evidence
+
+1. Which BSC stock ticker has a usable route for a small live mainnet trade?
+2. Does the same ticker have executable bStocks and Ondo routes? If not, omit issuer comparison from the P0 demo.
+3. Does Agentic Wallet expose a practical automation path for our app by the P1 gate? If not, retain user-signed execution and skip the special-prize claim.
+4. Which deployment host can run the scheduler and server-side Binance signing reliably through judging?
