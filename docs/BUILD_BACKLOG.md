@@ -8,7 +8,7 @@ This is the build order for the 11 October submission. Each ticket has a visible
 | --- | --- | --- | ---: |
 | B01 | Register for the event and create Binance Web3 API credentials. Start the firsthand DX log with timestamps. | Credentials are available to the server environment; no secret appears in source control or logs. | 1–3 h, subject to account access |
 | B02 | Build a small server-only API client with the exact signed `/build` request path, raw query ordering, timestamp, and typed error handling. | Successful signed RWA platform and token search calls; 401 and 429 cases recorded without leaking secrets. | 3–5 h |
-| B03 | Discover candidate BSC bStocks/Ondo tokens and query at least one small USDT-to-token RFQ route with the user's wallet address. Measure quote latency, expiry, and output. | Save a redacted live response and select a demonstrably routable token; no hardcoded sample address in the live path. | 3–6 h |
+| B03 | Discover candidate BSC bStocks/Ondo tokens, query a real BSC wallet balance, and request at least one small USDT-to-token RFQ route. Measure quote latency, expiry, and output. | Save redacted live responses, select a demonstrably routable token, and record the first successful call in the DX log. The code is wired; upstream verification is blocked by local DNS at the current checkpoint. | 3–6 h |
 
 **Gate:** If B03 cannot produce a live route by 30 September, ask organizers for token/route guidance and keep the product read-only while diagnosing. Do not build a trade UI on fictional liquidity.
 
@@ -18,6 +18,7 @@ This is the build order for the 11 October submission. Each ticket has a visible
 | --- | --- | --- | ---: |
 | B04 | Implement typed market-session and restriction parser from RWA `statusInfo`. Include `nextOpenTime` and source freshness. | `regular`, extended, closed, pause, maintenance, and unknown data map to distinct policy states. | 4–6 h |
 | B05 | Implement pure policy evaluator for target drift, enabled sessions, trade caps, daily budget, cooldown, slippage, quote impact, route availability, and stale data. | Same input always yields the same `TRADE`/`WAIT`/`BLOCK` action and ordered reason codes; no execution method is available inside the evaluator. | 6–10 h |
+| B05a | Propose `BUY`, `SELL`, or `HOLD` from observed stock/USDT balances and a target weight. Keep this stage unable to submit orders. | Real-address holdings drive a proposal with explicit drift and size; malformed or risk-flagged balances fail closed. Pure proposal and valuation tests pass; live API response remains to be verified. | 3–5 h |
 | B06 | Persist observations and decisions, including rejected alternatives and policy version. Build a read-only decision URL. | Judge can inspect one live decision and one clearly labelled historical/replay case without wallet access. | 6–10 h |
 | B07 | Build a minimal dashboard: session state, next open, selected ticker/issuer, basket drift, limits, latest quote, and decision. | A new visitor understands why the agent acted or waited in under 30 seconds. | 8–12 h |
 
@@ -35,7 +36,7 @@ This is the build order for the 11 October submission. Each ticket has a visible
 | Ticket | Implementation | Acceptance | Estimate |
 | --- | --- | --- | ---: |
 | B12 | Compare two issuers only if both have same-ticker BSC tokens and live quotes; normalize approximate share exposure and show disclosures. | The chosen route, rejected route, ratio, fee, and issuer facts are visible; no legal equivalence claim. | 6–10 h, conditional |
-| B13 | Try Binance Agentic Wallet execution within App-configured limits. | Real bounded execution works and is recorded; otherwise remove this branch by 8 October. | 4–12 h feasibility gate |
+| B13 | In parallel with the owner-signed RFQ path, install and sign in to Binance Agentic Wallet, verify BSC stock quote/swap support, App-configured token and daily limits, any confirmation step, and final order polling. Add it only as an adapter behind the same Bellproof policy gate. | One bounded order reaches a final verified status and is recorded; otherwise remove this branch by 8 October. The Binance account owner must complete App pairing and rules. | 4–12 h feasibility gate |
 | B14 | Write the report from firsthand DX entries, record the demo, deploy, publish the allowed source, and rehearse the judge flow. | Public repo, live link, ≤4-minute video, report, and clean-browser run are complete by 10 October. | 10–16 h |
 
 ## Meaningful verification

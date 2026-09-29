@@ -2,7 +2,7 @@
 
 **Version:** 0.1 planning draft, 29 September 2026
 
-**Product:** session-aware execution agent for BSC tokenized stocks
+**Product:** policy-controlled execution agent for BSC tokenized stocks
 
 **Submission target:** BNB Hack: Tokenized Stocks Edition, 11 October 2026
 
@@ -10,7 +10,7 @@
 
 People can buy stock tokens on-chain at times when the underlying market is closed, but a scheduled rebalance does not tell them whether the token is halted, the route is thin, or the quoted outcome violates their limits. Bellproof turns a basket instruction into a traceable decision: trade at a bounded cost, wait for a better session or route, or block an unsafe action.
 
-**One-line promise:** “Your stock-token agent knows when to trade and when to wait.”
+**One-line promise:** “Keep your stock basket within policy, with proof of every trade, wait, and block.”
 
 ## Target user and job
 
@@ -34,6 +34,7 @@ This is an execution and monitoring tool, not a source of investment recommendat
 | P0-2 | Classify `premarket`, `regular`, `postmarket`, `overnight`, `closed`, and `pause` using Binance RWA `statusInfo`; show `nextOpenTime` and reason. | UI shows source timestamp and correct state from live data. |
 | P0-3 | Distinguish ordinary market closure from asset/market pause or corporate action. | `ASSET_PAUSED`, `MARKET_PAUSED`, maintenance, and unsupported states always block execution. |
 | P0-4 | Obtain a fresh executable quote and report output amount, route, price impact if supplied, estimated fee, quote age, and expiry. | Quote refreshes before transaction build; expired quote never executes. |
+| P0-4a | Read chosen stock and USDT wallet balances and propose a rebalance from target drift. | A real address returns a reproducible `BUY`, `SELL`, or `HOLD` proposal; it never grants execution authority. |
 | P0-5 | Apply user-set caps: allowlist, max per trade, max daily spend, slippage, quote impact, cooldown, and outside-hours opt-in. | Policy returns stable reason codes; at least one blocked case shown. |
 | P0-6 | Build and simulate any required approval transaction; verify the RFQ typed order against the quote and policy before signing. | Approval simulation and RFQ order checks appear beside the proposed action. |
 | P0-7 | User signs the approval if needed and the RFQ EIP-712 order; verify order status and settled balances. | Small BSC mainnet order with transaction/explorer evidence when settled. |
@@ -44,8 +45,8 @@ This is an execution and monitoring tool, not a source of investment recommendat
 | ID | Requirement | Go/no-go condition |
 | --- | --- | --- |
 | P1-1 | Compare bStocks and Ondo representations of one underlying ticker by **executable cost per approximate share exposure**, incorporating `tokenToShareRatio`, quote output, fees, issuer disclosures, and user preference. Show each token's issuer and available attestation links; do not present the tokens as legally interchangeable. | Both issuer tokens and routes exist on BSC for the selected ticker. |
-| P1-2 | Rebalance a two-asset basket when allocation drift exceeds a chosen threshold. | Token balance and quote data are reliable for both assets. |
-| P1-3 | Add Binance Agentic Wallet as an execution adapter and show its enforced daily/token limits. | Wallet setup and programmatic workflow succeed with the team's own account; no bypass of app-side confirmation rules. |
+| P1-2 | Extend the single-stock-plus-USDT job to a basket with two stock tokens. | Token balance and quote data are reliable for both assets. |
+| P1-3 | Add Binance Agentic Wallet as an execution adapter through the same deterministic policy gate; show its Binance App daily/token limits and final order status. | Wallet setup and programmatic workflow succeed with the team's own account; no bypass of App confirmation rules. Start feasibility during P0 without delaying user-signed live execution. |
 | P1-4 | Send a concise alert or approval request when a decision changes. | Core decision record and execution path are stable. |
 
 ## P2 ideas: omit unless all P0/P1 evidence is complete
@@ -67,7 +68,7 @@ Proposed demo defaults, **not universal safe values**: $10 maximum regular-sessi
 
 ## Decision output contract
 
-Each run returns one of `TRADE`, `WAIT`, `BLOCK` plus reason codes such as `DRIFT_BELOW_THRESHOLD`, `CLOSED_HOURS_OPT_OUT`, `ASSET_RESTRICTED`, `NO_ROUTE`, `QUOTE_EXPIRED`, `SLIPPAGE_CAP`, `DAILY_CAP`, `PREFLIGHT_FAILED`, or `READY_TO_SIGN`. The app shows the data and thresholds behind each code. A language model can rephrase the explanation but cannot change the action.
+The proposer first returns `BUY`, `SELL`, or `HOLD` with drift and target evidence. The verifier then returns `TRADE`, `WAIT`, or `BLOCK` plus reason codes such as `DRIFT_BELOW_THRESHOLD`, `CLOSED_HOURS_OPT_OUT`, `ASSET_RESTRICTED`, `NO_ROUTE`, `QUOTE_EXPIRED`, `SLIPPAGE_CAP`, `DAILY_CAP`, `PREFLIGHT_FAILED`, or `READY_TO_SIGN`. The app shows the data and thresholds behind each code. A language model can rephrase the explanation but cannot change the action.
 
 ## User journey
 

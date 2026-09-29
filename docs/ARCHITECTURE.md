@@ -1,23 +1,27 @@
 # Bellproof architecture
 
-**Status:** implementation plan, updated 29 September 2026. The dashboard, signed client, market and issuer-profile lookup, RFQ preview, and pure policy engine exist; persistence and execution remain planned.
+**Status:** implementation plan, updated 29 September 2026. The dashboard, signed client, market and issuer-profile lookup, wallet-balance proposal, RFQ preview, and pure policy engine exist; persistence and execution remain planned. Upstream Binance calls are not yet verified in this environment because DNS resolution fails.
 
 ## Design rule
 
-Keep trading decisions deterministic, with source data and thresholds visible. The agent can monitor and propose actions continuously; any autonomous execution must use an execution method that enforces the user's limits outside the language model.
+Give the agent one job: **keep this basket within my policy**. Its proposal can come from observed drift; only the deterministic policy can mark it eligible for execution. Any autonomous executor must also enforce the user's limits outside the language model.
 
 ```mermaid
 flowchart LR
   UI[Web app: policy, session board, decision record] --> API[Server API]
   API --> DB[(Decisions and policies)]
   API --> RWA[Binance RWA Data API]
+  API --> WALLET[Binance Wallet API]
   API --> QUOTE[Binance Trading API]
   API --> TX[Binance Transaction API]
   WORKER[Scheduled agent run] --> API
-  API --> POLICY[Deterministic policy engine]
+  WALLET --> PROPOSAL[Rebalance proposal]
+  RWA --> PROPOSAL
+  PROPOSAL --> POLICY[Deterministic policy engine]
+  QUOTE --> POLICY
   POLICY --> EXEC[Execution adapter]
   EXEC --> USER[User wallet signature: P0]
-  EXEC --> BAW[Binance Agentic Wallet: gated P1]
+  EXEC --> BAW[Binance Agentic Wallet: gated adapter]
   USER --> BSC[BSC mainnet]
   BAW --> BSC
   BSC --> API
@@ -39,24 +43,27 @@ No infrastructure provider or AI model is committed at the planning stage. A lan
 observe wallet and target weights
   -> resolve the BSC token and issuer
   -> read market status and restriction reason
-  -> compute allocation drift
-  -> request fresh executable quote(s)
-  -> compare alternatives and apply user policy
+  -> propose BUY, SELL, or HOLD from allocation drift
+  -> request a fresh quote for the proposed side and size
+  -> apply the deterministic policy to status, quote, limits, and preflight
   -> WAIT or BLOCK with evidence, or prepare route-specific execution
   -> for RFQ: build/simulate exact approval if needed; validate typed order
   -> recheck quote age, status, and remaining caps
-  -> request user signature (P0) or bounded wallet execution (P1)
-  -> submit signed RFQ order and verify order status, receipt, and balances
+  -> request user signature or bounded Agentic Wallet execution when verified
+  -> submit the route-specific order and verify final status, receipt, and balances
   -> append immutable decision/result record
 ```
 
 The order matters. A quote is not an authorization. Simulation is not settlement. Every state change is saved with timestamps so the judge can see where a decision stopped.
+
+The Agentic Wallet path is a separate adapter: use its BSC quote, swap, and order-status flow only after checking the same policy and its Binance App security rules. Its returned `orderId` means submission, not completion; poll until a final state and record the actual transaction hash and balances. This path must not be presented as the same RFQ EIP-712 flow until a live stock route proves it. [Agentic Wallet stock-trading guide](https://developers.binance.com/en/docs/products/agentic-wallet/use-cases/trading/stock-trading), [market-order reference](https://github.com/binance/binance-skills-hub/blob/main/skills/binance-web3/binance-agentic-wallet/references/market-order.md).
 
 ## External API mapping
 
 | Product need | Binance endpoint family | Notes |
 | --- | --- | --- |
 | Find same-ticker assets and issuer | RWA search, token list, underlying profile | Filter chain `56`; retain contract, issuer, decimals, `tokenToShareRatio`, and attestation links when present. |
+| Observe basket allocation | Wallet token balances by address | Request the chosen BSC stock contract and BSC USDT; value with returned `tokenPrice`; fail closed on a missing price for held tokens or a risk flag. A valuation is not an executable quote. |
 | Session and restriction state | RWA underlying market / token list `statusInfo` | Use API status and `nextOpenTime`, not a hand-coded US clock; closures, holidays, and corporate actions differ. |
 | Executable cost | Trading aggregated quote | A quote ID lasts about 30 seconds; compare output after share-ratio normalization and known fees. Present issuer rights and protections separately; equal share exposure does not imply legally equivalent tokens. No route means no trade. |
 | RFQ order construction | Trading swap endpoint returns `rfq.typedDataToSign` for equity routes | Re-quote before construction; verify chain, wallet, token, amount, deadline, and vendor fields before EIP-712 signing. |

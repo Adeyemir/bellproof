@@ -12,7 +12,7 @@ The hackathon scores technical implementation **30%**, creativity **25%**, Devel
 | Quote and RFQ preflight guard | 9 | P0 | Real quote, verified EIP-712 order, approval simulation if needed, one small settled trade. |
 | Decision journal including rejected alternatives | 9 | P0 | Public decision page ties inputs to policy version, action, and receipt. |
 | Two-issuer effective-exposure comparison | 8 | P1 | Same ticker on both issuers, usable live routes, ratio-adjusted calculation. |
-| Binance Agentic Wallet execution | 7 | P1 | Working account and rule-constrained transaction; otherwise omit. |
+| Binance Agentic Wallet execution | 8 | Early feasibility, P1 delivery | App rules, working BSC stock order, final status, and the same Bellproof policy gate; otherwise omit. |
 | BNB Agent Studio / b402 monetization | 4 | P2 | Only if the core is finished and a genuine user need is proven. |
 | Independent stock-versus-token premium signal | 3 now | P2 | Requires a separate trustworthy market data source; Binance `referencePrice` is derived from on-chain price. |
 
@@ -22,10 +22,10 @@ These are prioritization scores based on the published criteria and implementati
 
 | Date (UTC) | Deliverable | Gate to continue |
 | --- | --- | --- |
-| 29–30 Sep | Register, request Binance Web3 credentials, save exact onboarding observations, call RWA search/status and Trading quote for one BSC stock token. | Real signed response and executable route. |
+| 29–30 Sep | Finish signed RWA, Wallet, and Trading calls; save exact onboarding observations. Begin Agentic Wallet setup with the account owner while the owner-signed route progresses. | Real signed response, wallet holdings, and executable route. |
 | 1–3 Oct | Build token catalog, session classifier, policy evaluator, quote comparison, and decision journal. | Three honest decision examples: trade-ready, wait, block. |
 | 4–6 Oct | Wallet connect, RFQ order construction, approval simulation, mainnet trade, order/receipt verification. | One small successful spot trade and one intentionally blocked trade. |
-| 7–8 Oct | Add second issuer only if live paired routes exist; evaluate Agentic Wallet path. | P1 feature must improve the demo without destabilizing P0. |
+| 7–8 Oct | Complete Agentic Wallet adapter if pairing and live execution passed; add second issuer only if paired live routes exist. | P1 feature must improve the demo without destabilizing P0. |
 | 9 Oct | UI polish, deployment, failure handling, firsthand DX report from logs. | Judge can reproduce without handholding. |
 | 10 Oct | Record video under four minutes, publish submission repository, verify deployed link and all source links. | Full rehearsal on a clean browser and wallet. |
 | 11 Oct before 12:00 | Submit. | Allow buffer; do not rely on a last-minute transaction. |
@@ -35,7 +35,7 @@ These are prioritization scores based on the published criteria and implementati
 1. **No usable BSC stock route by 30 Sep:** ask organizers for supported token/route guidance; build a read-only session and quote monitor while investigating. Do not pretend a fixture is live.
 2. **No two issuer routes by 3 Oct:** keep one issuer central. The session and execution quality story remains strong.
 3. **No working Agentic Wallet integration by 8 Oct:** stop that branch. Ship reliable user-signed execution and make no special-prize claim.
-4. **No independent traditional-market price feed:** remove all premium/arbitrage language. Document the Binance `referencePrice` limitation as a concrete DX finding.
+4. **No independent traditional-market price feed:** remove all premium/arbitrage language. Document the Binance `referencePrice` limitation as a documentation finding unless also verified in a live response.
 5. **Any live quote exceeds user limits:** show the wait decision. Do not loosen limits merely to produce a demo trade.
 
 ## Four-minute demo outline

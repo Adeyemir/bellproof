@@ -194,7 +194,7 @@ export function evaluateDecision(input: DecisionInput): Decision {
 export const demoPolicy: ExecutionPolicy = {
   allowExtendedHours: false,
   allowClosedHours: false,
-  driftThresholdBps: 500,
+  driftThresholdBps: 300,
   maxTradeRegularCents: 1_000,
   maxTradeOutsideCents: 300,
   maxDailySpendCents: 2_000,
