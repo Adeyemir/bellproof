@@ -20,6 +20,9 @@ interface MarketCandidate {
   restrictionReason: string | null;
   restrictionMessage: string | null;
   nextOpenTimeMs: number | null;
+  tokenToShareRatio: string | null;
+  attestations: Array<{ label: string; url: string }>;
+  profileUnavailable: boolean;
 }
 
 interface MarketResponse {
@@ -59,6 +62,7 @@ const explanations: Record<DecisionReason, string> = {
   DRIFT_BELOW_THRESHOLD: "The rebalance is below the configured drift threshold.",
   NO_ROUTE: "No executable route is available.",
   QUOTE_EXPIRED: "The quote must be refreshed before execution.",
+  QUOTE_QUALITY_UNKNOWN: "The route did not report enough price-impact data to meet this policy.",
   TRADE_CAP: "The proposed trade exceeds the session's per-trade limit.",
   DAILY_CAP: "The trade would exceed the daily spending limit.",
   SLIPPAGE_CAP: "Requested slippage exceeds the user's limit.",
@@ -256,8 +260,10 @@ export function BellproofDashboard() {
             {market && market.candidates.length > 0 && <div className="space-y-3">{market.candidates.map((candidate) => (
               <article key={`${candidate.platformId}:${candidate.tokenContractAddress}`} className="rounded-xl border border-white/10 bg-black/15 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-semibold">{candidate.companyName || candidate.ticker} <span className="text-white/45">· {candidate.tokenSymbol}</span></p><p className="mt-1 text-xs uppercase tracking-widest text-lime-300">{candidate.platformId}</p></div><span className="rounded-full border border-white/15 px-3 py-1 text-xs capitalize text-white/75">{candidate.session}</span></div>
-                <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2"><div><dt className="text-white/40">Underlying open</dt><dd className="mt-1">{candidate.openState ? "Yes" : "No"}</dd></div><div><dt className="text-white/40">Restriction</dt><dd className="mt-1">{candidate.restrictionReason ?? "None reported"}</dd></div><div><dt className="text-white/40">Next open</dt><dd className="mt-1">{formatTime(candidate.nextOpenTimeMs)}</dd></div><div><dt className="text-white/40">Contract</dt><dd className="mt-1 break-all font-mono">{candidate.tokenContractAddress}</dd></div></dl>
+                <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2"><div><dt className="text-white/40">Underlying open</dt><dd className="mt-1">{candidate.openState ? "Yes" : "No"}</dd></div><div><dt className="text-white/40">Restriction</dt><dd className="mt-1">{candidate.restrictionReason ?? "None reported"}</dd></div><div><dt className="text-white/40">Next open</dt><dd className="mt-1">{formatTime(candidate.nextOpenTimeMs)}</dd></div><div><dt className="text-white/40">Token-to-share ratio</dt><dd className="mt-1">{candidate.tokenToShareRatio ?? "Unavailable"}</dd></div><div className="sm:col-span-2"><dt className="text-white/40">Contract</dt><dd className="mt-1 break-all font-mono">{candidate.tokenContractAddress}</dd></div></dl>
                 {candidate.restrictionMessage && <p className="mt-3 text-xs text-amber-200">{candidate.restrictionMessage}</p>}
+                {candidate.profileUnavailable && <p className="mt-3 text-xs text-amber-200">Issuer profile could not be fetched.</p>}
+                {candidate.attestations.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{candidate.attestations.map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer" className="rounded border border-white/15 px-2 py-1 text-xs text-lime-300 hover:bg-lime-300/10">{link.label.replaceAll(/([A-Z])/g, " $1").trim()} ↗</a>)}</div>}
                 <button type="button" disabled={quoteLoading} onClick={() => fetchQuote(candidate)} className="mt-4 rounded-lg border border-lime-300/35 px-3 py-2 text-xs font-semibold text-lime-300 hover:bg-lime-300/10 disabled:opacity-50">{quoteLoading ? "Requesting…" : "Get RFQ routes"}</button>
               </article>
             ))}<p className="pt-1 text-xs text-white/40">Response checked {formatTime(market.observedAtMs)}. Session status is informational; execution needs a new quote and the correct RFQ signing flow.</p></div>}

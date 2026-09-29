@@ -1,6 +1,6 @@
 # Bellproof architecture
 
-**Status:** implementation plan, updated 29 September 2026. The dashboard, signed client, market lookup, RFQ preview, and pure policy engine exist; persistence and execution remain planned.
+**Status:** implementation plan, updated 29 September 2026. The dashboard, signed client, market and issuer-profile lookup, RFQ preview, and pure policy engine exist; persistence and execution remain planned.
 
 ## Design rule
 

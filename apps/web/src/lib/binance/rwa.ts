@@ -34,6 +34,16 @@ interface UnderlyingMarketResponse {
   };
 }
 
+interface UnderlyingProfileResponse {
+  tokenToShareRatio?: string | null;
+  protections?: Record<string, { supported?: boolean; url?: string | null }>;
+}
+
+export interface AttestationLink {
+  label: string;
+  url: string;
+}
+
 export interface RwaMarketCandidate {
   ticker: string;
   companyName: string;
@@ -45,6 +55,22 @@ export interface RwaMarketCandidate {
   restrictionReason: string | null;
   restrictionMessage: string | null;
   nextOpenTimeMs: number | null;
+  tokenToShareRatio: string | null;
+  attestations: AttestationLink[];
+  profileUnavailable: boolean;
+}
+
+function attestationLinks(profile: UnderlyingProfileResponse | null): AttestationLink[] {
+  return Object.entries(profile?.protections ?? {})
+    .filter(([, entry]) => entry?.supported === true && typeof entry.url === "string")
+    .flatMap(([label, entry]) => {
+      try {
+        const url = new URL(entry.url!);
+        return url.protocol === "https:" ? [{ label, url: url.toString() }] : [];
+      } catch {
+        return [];
+      }
+    });
 }
 
 export async function findBscStockMarkets(ticker: string): Promise<{
@@ -83,6 +109,16 @@ export async function findBscStockMarkets(ticker: string): Promise<{
       "/api/v1/dex/market/rwa/underlying-market",
       { binanceChainId: "56", tokenContractAddress: asset.tokenContractAddress },
     );
+    let profile: UnderlyingProfileResponse | null = null;
+    let profileUnavailable = false;
+    try {
+      profile = await getBinance<UnderlyingProfileResponse>(
+        "/api/v1/dex/market/rwa/underlying-profile",
+        { binanceChainId: "56", tokenContractAddress: asset.tokenContractAddress },
+      );
+    } catch {
+      profileUnavailable = true;
+    }
     const status = market?.statusInfo;
     const session = status?.marketStatus;
     withStatus.push({
@@ -95,6 +131,10 @@ export async function findBscStockMarkets(ticker: string): Promise<{
       restrictionMessage: status?.reasonMsg ?? null,
       nextOpenTimeMs:
         typeof status?.nextOpenTime === "number" ? status.nextOpenTime : null,
+      tokenToShareRatio:
+        typeof profile?.tokenToShareRatio === "string" ? profile.tokenToShareRatio : null,
+      attestations: attestationLinks(profile),
+      profileUnavailable,
     });
   }
 

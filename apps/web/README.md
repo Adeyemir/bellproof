@@ -1,6 +1,6 @@
 # Bellproof web prototype
 
-The app implements a signed Binance Web3 API client, live BSC bStocks/Ondo ticker and session lookup, a wallet-specific RFQ preview, and a deterministic session-policy lab. See the [repository README](../../README.md) for the product plan and setup.
+The app implements a signed Binance Web3 API client, live BSC bStocks/Ondo ticker, session, and issuer-profile lookup, a wallet-specific RFQ preview, and a deterministic session-policy lab. See the [repository README](../../README.md) for the product plan and setup.
 
 ## Local commands
 

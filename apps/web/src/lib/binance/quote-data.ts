@@ -51,6 +51,7 @@ export function normalizeStockQuote(raw: RawQuote, targetAddress: string): Stock
     !/^\d+$/.test(raw.toTokenAmount ?? "") ||
     raw.fromToken?.tokenContractAddress?.toLowerCase() !== bscUsdtAddress.toLowerCase() ||
     raw.toToken?.tokenContractAddress?.toLowerCase() !== targetAddress.toLowerCase() ||
+    raw.fromToken?.decimal !== "18" ||
     !Number.isInteger(outputDecimals) ||
     outputDecimals < 0 ||
     outputDecimals > 36 ||

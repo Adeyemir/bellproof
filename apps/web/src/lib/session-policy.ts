@@ -21,6 +21,7 @@ export type DecisionReason =
   | "DRIFT_BELOW_THRESHOLD"
   | "NO_ROUTE"
   | "QUOTE_EXPIRED"
+  | "QUOTE_QUALITY_UNKNOWN"
   | "TRADE_CAP"
   | "DAILY_CAP"
   | "SLIPPAGE_CAP"
@@ -41,7 +42,7 @@ export interface MarketObservation {
 export interface ExecutableQuote {
   receivedAtMs: number;
   ttlMs: number;
-  priceImpactBps: number;
+  priceImpactBps: number | null;
 }
 
 export interface ExecutionPolicy {
@@ -134,6 +135,7 @@ export function evaluateDecision(input: DecisionInput): Decision {
   if (
     (market.session === "regular" && !market.openState) ||
     (market.session === "closed" && market.openState) ||
+    (market.session === "closed" && market.restrictionReason === "TRADING") ||
     (market.session === "regular" && market.restrictionReason === "MARKET_CLOSED")
   ) {
     return result(input, "BLOCK", "MARKET_STATUS_CONFLICT");
@@ -173,6 +175,9 @@ export function evaluateDecision(input: DecisionInput): Decision {
   }
   if (input.requestedSlippageBps > policy.maxSlippageBps) {
     return result(input, "BLOCK", "SLIPPAGE_CAP");
+  }
+  if (quote.priceImpactBps === null) {
+    return result(input, "WAIT", "QUOTE_QUALITY_UNKNOWN");
   }
   if (!Number.isFinite(quote.priceImpactBps)) {
     return result(input, "BLOCK", "INVALID_POLICY_INPUT");

@@ -141,5 +141,10 @@ describe("session policy", () => {
       ttlMs: 30_000,
       priceImpactBps: Number.NaN,
     } })).reason).toBe("INVALID_POLICY_INPUT");
+    expect(evaluateDecision(input({ quote: {
+      receivedAtMs: nowMs - 1_000,
+      ttlMs: 30_000,
+      priceImpactBps: null,
+    } })).reason).toBe("QUOTE_QUALITY_UNKNOWN");
   });
 });
