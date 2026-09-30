@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "This contract was not found for the ticker on BSC." }, { status: 404 });
     }
     if (
-      asset.session === "unknown" ||
       asset.session === "pause" ||
       (asset.restrictionReason !== null &&
         asset.restrictionReason !== "TRADING" &&
@@ -82,7 +81,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Binance Web3 API credentials are not configured.", code: "CREDENTIALS_MISSING" }, { status: 503 });
     }
     if (error instanceof BinanceWeb3Error) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status === 429 ? 429 : 502 });
+      const status = error.status === 429 ? 429 : error.code === 40375 ? 422 : error.code === 40367 ? 409 : 502;
+      return NextResponse.json({ error: error.message, code: error.code }, { status });
     }
     if (error instanceof BinanceTransportError) {
       return NextResponse.json(

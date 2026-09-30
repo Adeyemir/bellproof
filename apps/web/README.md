@@ -1,6 +1,6 @@
 # Bellproof web prototype
 
-The app implements a signed Binance Web3 API client, BSC bStocks/Ondo ticker and session lookup, a wallet-specific RFQ preview, a wallet-balance rebalance proposal, and a deterministic policy lab. The Binance-hosted paths are wired but still need a successful upstream call from a network that resolves the API host. See the [repository README](../../README.md) for the product plan and setup.
+The app implements a signed Binance Web3 API client, BSC bStocks/Ondo ticker and session lookup, a wallet-specific route preview, a wallet-balance rebalance proposal, and a deterministic policy lab. Live RWA discovery and `SWAP` quotes were verified on 30 September 2026. See the [repository README](../../README.md) for the product plan and setup.
 
 ## Local commands
 
@@ -19,6 +19,6 @@ npm run lint
 npm run build
 ```
 
-Portfolio proposals and RFQ previews do not sign, submit, or broadcast an order. A proposal is not a `TRADE` decision until a fresh quote and the policy gates pass. The Transaction API can simulate an on-chain approval transaction when the execution flow is added; the RFQ order itself needs typed-order validation and status tracking.
+Portfolio proposals and route previews do not sign, submit, or broadcast an order. A proposal is not a `TRADE` decision until a fresh quote and the policy gates pass. The observed equity routes use `SWAP`, so the next execution slice must validate and simulate the unsigned swap and any approval. An `RFQ` route, if observed later, needs typed-order validation and status tracking instead.
 
 If the UI cannot reach Binance, run `npm run smoke:binance` from a Terminal with normal internet access. It makes one signed NVDA search and prints status, latency, and public token metadata without printing credentials.

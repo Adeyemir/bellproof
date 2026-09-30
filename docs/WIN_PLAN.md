@@ -9,7 +9,7 @@ The hackathon scores technical implementation **30%**, creativity **25%**, Devel
 | Feature | Strategic value /10 | Priority | Proof required |
 | --- | ---: | --- | --- |
 | Session-aware `TRADE` / `WAIT` / `BLOCK` engine | 9 | P0 | Live status from RWA API; reproducible closure and halt cases. |
-| Quote and RFQ preflight guard | 9 | P0 | Real quote, verified EIP-712 order, approval simulation if needed, one small settled trade. |
+| Quote and swap preflight guard | 9 | P0 | Real quote, validated unsigned swap, approval and swap simulation, one small settled trade. Add EIP-712 validation only if a live RFQ route appears. |
 | Decision journal including rejected alternatives | 9 | P0 | Public decision page ties inputs to policy version, action, and receipt. |
 | Two-issuer effective-exposure comparison | 8 | P1 | Same ticker on both issuers, usable live routes, ratio-adjusted calculation. |
 | Binance Agentic Wallet execution | 8 | Early feasibility, P1 delivery | App rules, working BSC stock order, final status, and the same Bellproof policy gate; otherwise omit. |
@@ -24,7 +24,7 @@ These are prioritization scores based on the published criteria and implementati
 | --- | --- | --- |
 | 29–30 Sep | Finish signed RWA, Wallet, and Trading calls; save exact onboarding observations. Begin Agentic Wallet setup with the account owner while the owner-signed route progresses. | Real signed response, wallet holdings, and executable route. |
 | 1–3 Oct | Build token catalog, session classifier, policy evaluator, quote comparison, and decision journal. | Three honest decision examples: trade-ready, wait, block. |
-| 4–6 Oct | Wallet connect, RFQ order construction, approval simulation, mainnet trade, order/receipt verification. | One small successful spot trade and one intentionally blocked trade. |
+| 4–6 Oct | Wallet connect, swap transaction validation, approval and swap simulation, mainnet trade, receipt verification. | One small successful spot trade and one intentionally blocked trade. |
 | 7–8 Oct | Complete Agentic Wallet adapter if pairing and live execution passed; add second issuer only if paired live routes exist. | P1 feature must improve the demo without destabilizing P0. |
 | 9 Oct | UI polish, deployment, failure handling, firsthand DX report from logs. | Judge can reproduce without handholding. |
 | 10 Oct | Record video under four minutes, publish submission repository, verify deployed link and all source links. | Full rehearsal on a clean browser and wallet. |
@@ -43,19 +43,19 @@ These are prioritization scores based on the published criteria and implementati
 1. **0:00–0:25 — Problem:** show the closed underlying session beside an active on-chain market. State why a naive scheduled rebalance can be costly.
 2. **0:25–1:05 — Policy:** set a basket and clear per-trade, session, and slippage limits.
 3. **1:05–1:50 — Live observation:** show current status, token contract/issuer, quote, and a `WAIT` or `BLOCK` reason. Label any historical case.
-4. **1:50–2:55 — Execution:** show a fresh RFQ quote, route-specific preflight, wallet signature, order status, BSC settlement hash, and verified balance change.
+4. **1:50–2:55 — Execution:** show a fresh `SWAP` quote, route-specific simulation, wallet signature, BSC settlement hash, and verified balance change.
 5. **2:55–3:35 — Audit:** open the decision record and its rejected alternatives; show that the trade and no-trade decisions are inspectable.
 6. **3:35–4:00 — DX finding:** present one real API pitfall, its exact endpoint, and a proposed documentation fix.
 
 ## DX report plan
 
-The organizer says perfunctory or AI-generated DX reports are not accepted. The team must write its own observations from actual calls and trades. Capture first-call time, endpoints, request/response timestamps, error codes, quote latency/expiry, failed routes, status behavior, RFQ/approval pitfalls, slippage, and the `referencePrice` ambiguity as observed. The [DX log template](DX_LOG.md) is a recording tool, not a report or substitute for firsthand findings.
+The organizer says perfunctory or AI-generated DX reports are not accepted. The team must write its own observations from actual calls and trades. Capture first-call time, endpoints, request/response timestamps, error codes, quote latency/expiry, failed routes, status behavior, swap/approval pitfalls, slippage, and the `referencePrice` ambiguity as observed. The [DX log template](DX_LOG.md) is a recording tool, not a report or substitute for firsthand findings.
 
 ## Evidence package for judges
 
 - Deployed read-only dashboard and working wallet flow.
 - Public repository with setup instructions and source links.
-- One small settled BSC mainnet RFQ order and one blocked decision with reason codes.
+- One small settled BSC mainnet spot trade and one blocked decision with reason codes.
 - Reproducible status/quote/transaction response samples with secrets removed.
 - Video under four minutes.
 - Human-authored DX report based on the team's own dated log.

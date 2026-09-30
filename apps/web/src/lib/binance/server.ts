@@ -1,6 +1,9 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
+import { Resolver } from "node:dns";
+import https from "node:https";
+import { isIP, type LookupFunction } from "node:net";
 import { buildRequestPath, signRequest } from "./signing";
 
 const baseUrl = "https://web3.binance.com";
@@ -42,6 +45,68 @@ interface ApiEnvelope<T> {
   success?: boolean;
 }
 
+async function fetchBinance(
+  url: string,
+  method: "GET" | "POST",
+  headers: Record<string, string>,
+  body: string | undefined,
+): Promise<Response> {
+  const dnsServer = process.env.BINANCE_WEB3_DNS_SERVER;
+  if (!dnsServer) {
+    return fetch(url, {
+      method,
+      headers,
+      body,
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+  }
+  if (!isIP(dnsServer)) throw new Error("Invalid BINANCE_WEB3_DNS_SERVER address");
+
+  // Opt-in development fallback for networks whose resolver returns NXDOMAIN.
+  // HTTPS still connects to the documented hostname and validates its certificate.
+  const resolver = new Resolver();
+  resolver.setServers([dnsServer]);
+  const lookup: LookupFunction = (hostname, options, callback) => {
+    resolver.resolve4(hostname, (error, addresses) => {
+      if (error) return callback(error, "", 4);
+      if (addresses.length === 0) return callback(new Error("DNS returned no IPv4 addresses"), "", 4);
+      return options.all
+        ? callback(null, [{ address: addresses[0], family: 4 }])
+        : callback(null, addresses[0], 4);
+    });
+  };
+
+  return new Promise<Response>((resolve, reject) => {
+    const request = https.request(url, {
+      method,
+      headers,
+      lookup,
+      signal: AbortSignal.timeout(10_000),
+    }, (upstream) => {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      upstream.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > 1_000_000) {
+          request.destroy(new Error("Binance response exceeded size limit"));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      upstream.on("end", () => {
+        resolve(new Response(Buffer.concat(chunks), {
+          status: upstream.statusCode ?? 502,
+          headers: { "Content-Type": upstream.headers["content-type"] ?? "application/json" },
+        }));
+      });
+      upstream.on("error", reject);
+    });
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
 async function request<T>(
   method: "GET" | "POST",
   endpoint: `/api/v1/${string}`,
@@ -59,19 +124,13 @@ async function request<T>(
 
   let response: Response;
   try {
-    response = await fetch(baseUrl + requestPath, {
-      method,
-      headers: {
+    response = await fetchBinance(baseUrl + requestPath, method, {
         "Content-Type": "application/json",
         "X-OC-APIKEY": apiKey,
         "X-OC-TIMESTAMP": timestamp,
         "X-OC-SIGN": signature,
         "X-OC-NONCE": randomUUID(),
-      },
-      body: method === "POST" ? body : undefined,
-      cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, method === "POST" ? body : undefined);
   } catch (error) {
     const cause = error instanceof Error ? error.cause : null;
     const networkCode = cause && typeof cause === "object" && "code" in cause
@@ -83,7 +142,7 @@ async function request<T>(
         "UPSTREAM_DNS_ERROR",
       );
     }
-    if (error instanceof Error && error.name === "TimeoutError") {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
       throw new BinanceTransportError(
         "The Binance Web3 API request timed out.",
         "UPSTREAM_TIMEOUT",

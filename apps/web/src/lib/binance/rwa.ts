@@ -2,16 +2,9 @@ import "server-only";
 
 import { getBinance } from "./server";
 import type { MarketSession } from "../session-policy";
+import { normalizeMarketSession } from "./rwa-status";
 
 const addressPattern = /^0x[a-fA-F0-9]{40}$/;
-const sessions = new Set<MarketSession>([
-  "premarket",
-  "regular",
-  "postmarket",
-  "overnight",
-  "closed",
-  "pause",
-]);
 
 interface SearchResult {
   ticker: string;
@@ -120,12 +113,9 @@ export async function findBscStockMarkets(ticker: string): Promise<{
       profileUnavailable = true;
     }
     const status = market?.statusInfo;
-    const session = status?.marketStatus;
     withStatus.push({
       ...asset,
-      session: session && sessions.has(session as MarketSession)
-        ? (session as MarketSession)
-        : "unknown",
+      session: normalizeMarketSession(status?.marketStatus),
       openState: status?.openState === true,
       restrictionReason: status?.reasonCode ?? null,
       restrictionMessage: status?.reasonMsg ?? null,

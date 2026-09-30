@@ -9,7 +9,7 @@ describe("BSC stock quote handling", () => {
     expect(() => usdtAmountFromCents(1_001)).toThrow(RangeError);
   });
 
-  it("accepts only an RFQ route for the requested BSC stock and USDT", () => {
+  it("accepts RFQ and observed SWAP routes only for the requested BSC stock and USDT", () => {
     const raw = {
       quoteId: "abc",
       vendorName: "PcsXRfq",
@@ -25,7 +25,11 @@ describe("BSC stock quote handling", () => {
       executionMode: "RFQ",
       priceImpactBps: -12,
     });
-    expect(normalizeStockQuote({ ...raw, executionMode: "SWAP" }, stockAddress)).toBeNull();
+    expect(normalizeStockQuote({ ...raw, executionMode: "SWAP", vendorName: "LiquidMesh" }, stockAddress)).toMatchObject({
+      executionMode: "SWAP",
+      vendorName: "LiquidMesh",
+    });
+    expect(normalizeStockQuote({ ...raw, executionMode: "UNKNOWN" }, stockAddress)).toBeNull();
     expect(normalizeStockQuote({ ...raw, binanceChainId: "1" }, stockAddress)).toBeNull();
     expect(normalizeStockQuote(raw, "0x0000000000000000000000000000000000000001")).toBeNull();
   });

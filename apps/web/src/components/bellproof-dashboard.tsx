@@ -36,13 +36,13 @@ interface QuoteResponse {
   ticker: string;
   tokenSymbol: string;
   platformId: string;
-  session: MarketSession;
+  session: MarketSession | "unknown";
   receivedAtMs: number;
   estimatedTtlMs: number;
   routes: Array<{
     quoteId: string;
     vendorName: string;
-    executionMode: "RFQ";
+    executionMode: "RFQ" | "SWAP";
     outputAmount: string;
     outputDecimals: number;
     outputSymbol: string;
@@ -123,7 +123,7 @@ export function BellproofDashboard() {
   const [marketErrorCode, setMarketErrorCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
-  const [quoteAmount, setQuoteAmount] = useState("5");
+  const [quoteAmount, setQuoteAmount] = useState("10");
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -355,7 +355,7 @@ export function BellproofDashboard() {
                   {candidate.restrictionMessage && <p className="candidate-warning">{candidate.restrictionMessage}</p>}
                   {candidate.profileUnavailable && <p className="candidate-warning">Issuer profile could not be fetched.</p>}
                   {candidate.attestations.length > 0 && <div className="attestations">{candidate.attestations.map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer">{link.label.replaceAll(/([A-Z])/g, " $1").trim()} ↗</a>)}</div>}
-                  <div className="candidate-actions"><button type="button" disabled={quoteLoading} onClick={() => fetchQuote(candidate)} className="button button-outline">{quoteLoading ? "Requesting…" : "Get RFQ routes"}</button><button type="button" disabled={portfolioLoading} onClick={() => fetchPortfolio(candidate)} className="button button-quiet">{portfolioLoading ? "Reading…" : "Propose from basket"}</button></div>
+                  <div className="candidate-actions"><button type="button" disabled={quoteLoading} onClick={() => fetchQuote(candidate)} className="button button-outline">{quoteLoading ? "Requesting…" : "Get live routes"}</button><button type="button" disabled={portfolioLoading} onClick={() => fetchPortfolio(candidate)} className="button button-quiet">{portfolioLoading ? "Reading…" : "Propose from basket"}</button></div>
                 </article>
               ))}
               <p className="source-note">Observed {formatTime(market.observedAtMs)}. A fresh quote and route checks are required before execution.</p>
@@ -373,7 +373,7 @@ export function BellproofDashboard() {
             </div>
             <div aria-live="polite" className="tool-results">
               {quoteError && <p className="message message-error">{quoteError}</p>}
-              {quote && <div className="result-card"><div className="result-top"><strong>RFQ routes / {quote.tokenSymbol}</strong><span>{quote.routes.length} ROUTE(S)</span></div><p className="result-meta">{quote.platformId} · {quote.session} · received {formatTime(quote.receivedAtMs)} · estimated 30-second lifetime</p>{quote.routes.length === 0 && <p className="candidate-warning">No valid RFQ route returned for this amount and wallet.</p>}{quote.routes.map((route) => <div key={route.quoteId} className="route-row"><strong>{route.vendorName} / ≈ {formatTokenAmount(route.outputAmount, route.outputDecimals)} {route.outputSymbol}</strong><p>Impact: {route.priceImpactBps === null ? "Unavailable" : route.priceImpactBps.toFixed(2) + " bps"} · Fee: {route.tradeFeeUsd === null ? "Unavailable" : "$" + route.tradeFeeUsd}</p><code>Quote ID: {route.quoteId}</code></div>)}</div>}
+              {quote && <div className="result-card"><div className="result-top"><strong>Live routes / {quote.tokenSymbol}</strong><span>{quote.routes.length} ROUTE(S)</span></div><p className="result-meta">{quote.platformId} · {quote.session} · received {formatTime(quote.receivedAtMs)} · estimated 30-second lifetime</p>{quote.session === "unknown" && <p className="candidate-warning">Binance did not identify this market session. This quote is for inspection; policy blocks execution until the session is verified.</p>}{quote.routes.length === 0 && <p className="candidate-warning">No valid route returned for this amount and wallet.</p>}{quote.routes.map((route) => <div key={route.quoteId} className="route-row"><strong>{route.vendorName} · {route.executionMode} / ≈ {formatTokenAmount(route.outputAmount, route.outputDecimals)} {route.outputSymbol}</strong><p>Impact: {route.priceImpactBps === null ? "Unavailable" : route.priceImpactBps.toFixed(2) + " bps"} · Fee: {route.tradeFeeUsd === null ? "Unavailable" : "$" + route.tradeFeeUsd}</p><code>Quote ID: {route.quoteId}</code></div>)}</div>}
               {portfolioError && <p className="message message-error">{portfolioError}</p>}
               {portfolio && <div className="result-card"><div className="result-top"><strong>Basket proposal / {portfolio.tokenSymbol}</strong><span>LIVE WALLET READ</span></div><p className="result-meta">Stock {"$"}{(portfolio.stockValueCents / 100).toFixed(2)} · USDT {"$"}{(portfolio.stableValueCents / 100).toFixed(2)} · target {(portfolio.proposal.targetStockWeightBps / 100).toFixed(2)}%</p><p className="result-emphasis">{portfolio.proposal.side === "HOLD" ? "HOLD" : portfolio.proposal.side + " ≈ $" + (portfolio.proposal.proposedTradeCents / 100).toFixed(2)} <span>/ {portfolio.proposal.reason.replaceAll("_", " ")}</span></p><p className="result-meta">Valued with {portfolio.valuationSource} at {formatTime(portfolio.observedAtMs)}. A fresh route and policy review are still required.</p></div>}
             </div>

@@ -18,7 +18,7 @@ export interface RawQuote {
 export interface StockQuote {
   quoteId: string;
   vendorName: string;
-  executionMode: "RFQ";
+  executionMode: "RFQ" | "SWAP";
   inputAmount: string;
   outputAmount: string;
   outputDecimals: number;
@@ -44,7 +44,7 @@ export function normalizeStockQuote(raw: RawQuote, targetAddress: string): Stock
     : Number(priceImpact) * 100;
   if (
     raw.binanceChainId !== "56" ||
-    raw.executionMode !== "RFQ" ||
+    (raw.executionMode !== "RFQ" && raw.executionMode !== "SWAP") ||
     !raw.quoteId ||
     !raw.vendorName ||
     !/^\d+$/.test(raw.fromTokenAmount ?? "") ||
@@ -62,7 +62,7 @@ export function normalizeStockQuote(raw: RawQuote, targetAddress: string): Stock
   return {
     quoteId: raw.quoteId,
     vendorName: raw.vendorName,
-    executionMode: "RFQ",
+    executionMode: raw.executionMode,
     inputAmount: raw.fromTokenAmount!,
     outputAmount: raw.toTokenAmount!,
     outputDecimals,
