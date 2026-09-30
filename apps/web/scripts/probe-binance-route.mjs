@@ -137,6 +137,9 @@ try {
             });
             const tx = swap?.tx;
             process.stdout.write(`  unsigned build: ${swap?.executionMode ?? "unknown"}; sender matches ${tx?.from?.toLowerCase() === probeAddress.toLowerCase()}; target ${tx?.to ?? "none"}; calldata chars ${tx?.data?.length ?? 0}; min receive ${tx?.minReceiveAmount ?? "none"}\n`);
+            process.stdout.write(`  tx fields: ${Object.keys(tx ?? {}).join(", ")}; value ${tx?.value ?? "none"}; gas ${tx?.gas ?? "none"}; nonce ${tx?.nonce ?? "not supplied"}\n`);
+            process.stdout.write(`  quote spender ${route.approveTarget ?? "none"}; signatureData ${JSON.stringify(tx?.signatureData ?? []).slice(0, 320)}\n`);
+            process.stdout.write(`  routed amount ${swap?.routerResult?.fromTokenAmount ?? "none"} -> ${swap?.routerResult?.toTokenAmount ?? "none"}\n`);
           } catch (error) {
             process.stderr.write(`  unsigned build failed: ${error.message}\n`);
           }

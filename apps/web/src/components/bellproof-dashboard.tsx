@@ -35,6 +35,7 @@ interface MarketResponse {
 interface QuoteResponse {
   ticker: string;
   tokenSymbol: string;
+  targetAddress: string;
   platformId: string;
   session: MarketSession | "unknown";
   receivedAtMs: number;
@@ -49,6 +50,50 @@ interface QuoteResponse {
     tradeFeeUsd: string | null;
     priceImpactBps: number | null;
   }>;
+}
+
+interface PreflightTransaction {
+  chainId: "56";
+  from: string;
+  to: string;
+  data: string;
+  value: string;
+  gas: string | null;
+  gasPrice: string | null;
+  maxPriorityFeePerGas: string | null;
+  nonce: string | null;
+}
+
+interface PreflightResponse {
+  decision: { action: "WAIT" | "BLOCK"; reason: string };
+  signingEnabled: false;
+  market: { session: MarketSession | "unknown"; restrictionReason: string | null; observedAtMs: number; nextOpenTimeMs?: number | null };
+  quote?: {
+    quoteId: string;
+    vendorName: string;
+    executionMode: "SWAP";
+    receivedAtMs: number;
+    estimatedExpiryMs: number;
+    amountIn: string;
+    quotedAmountOut: string;
+    minReceiveAmount: string;
+    outputSymbol: string;
+    outputDecimals: number;
+    priceImpactBps: number | null;
+    slippagePercent: string;
+  };
+  execution?: {
+    router: string;
+    spender: string;
+    approval: PreflightTransaction;
+    swap: PreflightTransaction;
+    nonceSource: string;
+  };
+  simulations?: {
+    approval: { status: string; failReason: string | null; allowanceChanges: unknown[] };
+    swap: { status: string; failReason: string | null; balanceChanges: unknown[] };
+  };
+  simulationNote?: string;
 }
 
 interface PortfolioResponse {
@@ -116,6 +161,49 @@ function formatTokenAmount(raw: string, decimals: number): string {
   }
 }
 
+function PreflightPanel({ result }: { result: PreflightResponse }) {
+  function downloadEvidence() {
+    const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `bellproof-preflight-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="result-card preflight-card">
+      <div className="result-top"><strong>Execution preflight</strong><span>READ ONLY / NO SIGNATURE</span></div>
+      <div className={`preflight-decision ${result.decision.action === "BLOCK" ? "is-block" : "is-wait"}`}>
+        <strong>{result.decision.action}</strong>
+        <span>{result.decision.reason.replaceAll("_", " ")}</span>
+      </div>
+      <p className="result-meta">Session {result.market.session} · restriction {result.market.restrictionReason ?? "none"} · observed {formatTime(result.market.observedAtMs)}</p>
+      {result.quote && <div className="preflight-facts">
+        <div><span>ROUTE</span><strong>{result.quote.vendorName} / {result.quote.executionMode}</strong></div>
+        <div><span>INPUT</span><strong>{formatTokenAmount(result.quote.amountIn, 18)} USDT</strong></div>
+        <div><span>QUOTED OUTPUT</span><strong>{formatTokenAmount(result.quote.quotedAmountOut, result.quote.outputDecimals)} {result.quote.outputSymbol}</strong></div>
+        <div><span>MINIMUM OUTPUT</span><strong>{formatTokenAmount(result.quote.minReceiveAmount, result.quote.outputDecimals)} {result.quote.outputSymbol}</strong></div>
+        <div><span>SLIPPAGE LIMIT</span><strong>{result.quote.slippagePercent}%</strong></div>
+        <div><span>ESTIMATED EXPIRY</span><strong>{formatTime(result.quote.estimatedExpiryMs)}</strong></div>
+      </div>}
+      {result.simulations && <div className="preflight-facts preflight-simulations">
+        <div><span>APPROVAL SIMULATION</span><strong className={result.simulations.approval.status === "SUCCESS" ? "sim-success" : "sim-failed"}>{result.simulations.approval.status}</strong><small>{result.simulations.approval.failReason}</small></div>
+        <div><span>SWAP SIMULATION</span><strong className={result.simulations.swap.status === "SUCCESS" ? "sim-success" : "sim-failed"}>{result.simulations.swap.status}</strong><small>{result.simulations.swap.failReason}</small></div>
+      </div>}
+      {result.execution && <>
+        <p className="result-meta">Router and approval spender: <code>{result.execution.router}</code>. Approval spender checked against Binance&apos;s exact calldata.</p>
+        <details className="preflight-detail"><summary>Approval payload · gas and nonce pending</summary><pre><code>{JSON.stringify(result.execution.approval, null, 2)}</code></pre></details>
+        <details className="preflight-detail"><summary>Unsigned swap payload</summary><pre><code>{JSON.stringify(result.execution.swap, null, 2)}</code></pre></details>
+        <p className="result-meta">Chain ID 56 is verified from the route; nonce: {result.execution.swap.nonce ?? "not supplied by Binance"}. Quote ID: <code>{result.quote?.quoteId}</code></p>
+      </>}
+      {result.simulationNote && <p className="candidate-warning">{result.simulationNote}</p>}
+      <div className="preflight-actions"><button type="button" onClick={downloadEvidence} className="button button-quiet">Download evidence JSON</button><span>Signing stays disabled until live wallet and policy checks pass.</span></div>
+    </div>
+  );
+}
+
 export function BellproofDashboard() {
   const [ticker, setTicker] = useState("NVDA");
   const [market, setMarket] = useState<MarketResponse | null>(null);
@@ -127,6 +215,9 @@ export function BellproofDashboard() {
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [preflightResult, setPreflightResult] = useState<PreflightResponse | null>(null);
+  const [preflightError, setPreflightError] = useState<string | null>(null);
+  const [preflightLoading, setPreflightLoading] = useState(false);
   const [liveTargetWeight, setLiveTargetWeight] = useState("15");
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
@@ -196,6 +287,8 @@ export function BellproofDashboard() {
     setMarketErrorCode(null);
     setQuote(null);
     setQuoteError(null);
+    setPreflightResult(null);
+    setPreflightError(null);
     setPortfolio(null);
     setPortfolioError(null);
     try {
@@ -220,6 +313,8 @@ export function BellproofDashboard() {
     setQuoteLoading(true);
     setQuote(null);
     setQuoteError(null);
+    setPreflightResult(null);
+    setPreflightError(null);
     try {
       const response = await fetch("/api/quote", {
         method: "POST",
@@ -241,6 +336,35 @@ export function BellproofDashboard() {
       setQuoteError("The quote service could not be reached.");
     } finally {
       setQuoteLoading(false);
+    }
+  }
+
+  async function runPreflight() {
+    if (!quote) return;
+    setPreflightLoading(true);
+    setPreflightResult(null);
+    setPreflightError(null);
+    try {
+      const response = await fetch("/api/preflight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticker: quote.ticker,
+          targetAddress: quote.targetAddress,
+          walletAddress: walletAddress.trim(),
+          amountCents: Math.round(Number(quoteAmount) * 100),
+        }),
+      });
+      const body: PreflightResponse | { error: string } = await response.json();
+      if (!response.ok) {
+        setPreflightError("error" in body ? body.error : "Preflight failed.");
+      } else {
+        setPreflightResult(body as PreflightResponse);
+      }
+    } catch {
+      setPreflightError("The preflight service could not be reached.");
+    } finally {
+      setPreflightLoading(false);
     }
   }
 
@@ -365,15 +489,18 @@ export function BellproofDashboard() {
 
           {market && market.candidates.length > 0 && <div className="wallet-tools">
             <div className="subsection-header"><div><span className="section-kicker">READ-ONLY TOOLS</span><h4>Quote and basket preview</h4></div><span className="read-only-pill">NO SIGNATURE</span></div>
-            <p className="subsection-description">Enter a BSC wallet address to inspect a route or calculate allocation drift. Nothing is submitted.</p>
+            <p className="subsection-description">Enter a BSC wallet address to inspect a route, calculate allocation drift, or simulate exact unsigned transactions. No on-chain transaction is submitted.</p>
             <div className="field-grid wallet-fields">
-              <label className="field"><span>WALLET ADDRESS</span><input value={walletAddress} onChange={(event) => setWalletAddress(event.target.value)} placeholder="0x…" autoComplete="off" className="text-input mono-input" /></label>
-              <label className="field"><span>USDT QUOTE SIZE</span><input type="number" min="0.01" max="10" step="0.01" value={quoteAmount} onChange={(event) => setQuoteAmount(event.target.value)} className="text-input" /></label>
+              <label className="field"><span>WALLET ADDRESS</span><input value={walletAddress} onChange={(event) => { setWalletAddress(event.target.value); setPreflightResult(null); }} placeholder="0x…" autoComplete="off" className="text-input mono-input" /></label>
+              <label className="field"><span>USDT QUOTE SIZE</span><input type="number" min="0.01" max="10" step="0.01" value={quoteAmount} onChange={(event) => { setQuoteAmount(event.target.value); setPreflightResult(null); }} className="text-input" /></label>
               <label className="field"><span>STOCK TARGET %</span><input type="number" min="0" max="100" step="0.01" value={liveTargetWeight} onChange={(event) => setLiveTargetWeight(event.target.value)} className="text-input" /></label>
             </div>
             <div aria-live="polite" className="tool-results">
               {quoteError && <p className="message message-error">{quoteError}</p>}
               {quote && <div className="result-card"><div className="result-top"><strong>Live routes / {quote.tokenSymbol}</strong><span>{quote.routes.length} ROUTE(S)</span></div><p className="result-meta">{quote.platformId} · {quote.session} · received {formatTime(quote.receivedAtMs)} · estimated 30-second lifetime</p>{quote.session === "unknown" && <p className="candidate-warning">Binance did not identify this market session. This quote is for inspection; policy blocks execution until the session is verified.</p>}{quote.routes.length === 0 && <p className="candidate-warning">No valid route returned for this amount and wallet.</p>}{quote.routes.map((route) => <div key={route.quoteId} className="route-row"><strong>{route.vendorName} · {route.executionMode} / ≈ {formatTokenAmount(route.outputAmount, route.outputDecimals)} {route.outputSymbol}</strong><p>Impact: {route.priceImpactBps === null ? "Unavailable" : route.priceImpactBps.toFixed(2) + " bps"} · Fee: {route.tradeFeeUsd === null ? "Unavailable" : "$" + route.tradeFeeUsd}</p><code>Quote ID: {route.quoteId}</code></div>)}</div>}
+              {quote?.routes.some((route) => route.executionMode === "SWAP") && <button type="button" disabled={preflightLoading} onClick={runPreflight} className="button button-outline">{preflightLoading ? "Simulating…" : "Build and simulate fresh route"}</button>}
+              {preflightError && <p className="message message-error">{preflightError}</p>}
+              {preflightResult && <PreflightPanel result={preflightResult} />}
               {portfolioError && <p className="message message-error">{portfolioError}</p>}
               {portfolio && <div className="result-card"><div className="result-top"><strong>Basket proposal / {portfolio.tokenSymbol}</strong><span>LIVE WALLET READ</span></div><p className="result-meta">Stock {"$"}{(portfolio.stockValueCents / 100).toFixed(2)} · USDT {"$"}{(portfolio.stableValueCents / 100).toFixed(2)} · target {(portfolio.proposal.targetStockWeightBps / 100).toFixed(2)}%</p><p className="result-emphasis">{portfolio.proposal.side === "HOLD" ? "HOLD" : portfolio.proposal.side + " ≈ $" + (portfolio.proposal.proposedTradeCents / 100).toFixed(2)} <span>/ {portfolio.proposal.reason.replaceAll("_", " ")}</span></p><p className="result-meta">Valued with {portfolio.valuationSource} at {formatTime(portfolio.observedAtMs)}. A fresh route and policy review are still required.</p></div>}
             </div>

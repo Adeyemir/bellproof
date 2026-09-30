@@ -1,6 +1,6 @@
 # Bellproof architecture
 
-**Status:** implementation plan, updated 30 September 2026. The dashboard, signed client, market and issuer-profile lookup, wallet-balance proposal, route preview, and pure policy engine exist. Live Binance calls returned BSC NVDAon and NVDAB `SWAP` quotes and unsigned swap calldata. Transaction simulation, persistence, and execution remain planned. The development network's default DNS still fails; an opt-in resolver setting enabled the verified calls.
+**Status:** implementation plan, updated 30 September 2026. The dashboard, signed client, market and issuer-profile lookup, wallet-balance proposal, route preview, read-only transaction preflight, and pure policy engine exist. Live Binance calls returned BSC NVDAon and NVDAB `SWAP` quotes and unsigned swap calldata. Approval and swap simulations were called from an unfunded diagnostic address; approval succeeded and swap failed for insufficient balance. Durable persistence and execution remain planned. The development network's default DNS still fails; an opt-in resolver setting enabled the verified calls.
 
 ## Design rule
 
@@ -68,7 +68,7 @@ The Agentic Wallet path is a separate adapter: use its BSC quote, swap, and orde
 | Session and restriction state | RWA underlying market / token list `statusInfo` | Use API status and `nextOpenTime`, not a hand-coded US clock; closures, holidays, and corporate actions differ. |
 | Executable cost | Trading aggregated quote | A quote ID lasts about 30 seconds; compare output after share-ratio normalization and known fees. Present issuer rights and protections separately; equal share exposure does not imply legally equivalent tokens. No route means no trade. |
 | Route construction | Trading swap endpoint | The observed equity routes return `executionMode=SWAP`, a transaction target, and calldata. Re-quote before construction; verify chain, sender, token pair, amount, target, minimum received, and slippage. If a future route returns `RFQ`, verify `rfq.typedDataToSign` instead. |
-| Transaction preflight | Trading approval endpoint and Transaction simulation | Enforce exact approval amount and the route's spender, then simulate approval if needed. Simulate the unsigned `SWAP` transaction from the intended wallet. An `RFQ` typed order is not itself an on-chain transaction to simulate. |
+| Transaction preflight | Trading `/swap` approval payload and Transaction simulation | Verify the approval calldata encodes the exact amount and the route's spender, then simulate approval. Simulate the unsigned `SWAP` transaction from the intended wallet. The simulations are independent and do not carry state changes forward. An `RFQ` typed order is not itself an on-chain transaction to simulate. |
 | Settlement | Transaction broadcast/status or wallet-submitted transaction receipt; RFQ submit/status only for an RFQ route | Sign only after policy and preflight pass. Verify the actual receipt and token balance before recording settlement. |
 | Portfolio and post-trade state | Wallet balances / transaction status | Verify mined receipt and updated token balance before marking a trade complete. |
 

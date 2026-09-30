@@ -4,7 +4,7 @@
 
 Bellproof keeps a user-defined stock-token basket within policy. It proposes a rebalance from wallet holdings, checks whether the trade is actually executable, and records why it traded, waited, or blocked. The execution and decision-journal stages are still being built.
 
-> Working name and prototype, 30 September 2026. Signed RWA discovery, live BSC stock quotes, and unsigned swap construction have been verified. Transaction simulation, signing, and a mainnet trade remain open. The name is not a claim of domain or trademark availability.
+> Working name and prototype, 30 September 2026. Signed RWA discovery, live BSC stock quotes, unsigned swap construction, and read-only Transaction API simulation have been verified. Wallet signing and a mainnet trade remain open. The name is not a claim of domain or trademark availability.
 
 ## Why build this
 
@@ -58,4 +58,4 @@ Open `http://localhost:3000`. Ticker lookup, wallet-balance proposal, and route 
 
 ## Current status
 
-The dashboard, signed API client, BSC RWA discovery with issuer profile and attestation links, read-only wallet-balance proposal, route preview, and deterministic session policy are implemented. On 30 September, the app returned live NVDAon and NVDAB `SWAP` quotes, and the Trading API built unsigned transactions for both. The current network resolver still returns `NXDOMAIN` for Binance; the opt-in development DNS setting makes local API calls work. Simulation, wallet signing, settlement verification, and a decision journal are still to be built. No API keys or wallet secrets belong in this repository.
+The dashboard, signed API client, BSC RWA discovery with issuer profile and attestation links, read-only wallet-balance proposal, route preview, transaction preflight, and deterministic session policy are implemented. On 30 September, the app returned live NVDAon and NVDAB `SWAP` quotes and built unsigned transactions for both. A read-only preflight validated exact approval and swap fields, then called the Binance Transaction API: an unfunded diagnostic wallet produced approval simulation `SUCCESS` and swap simulation `FAILED` for insufficient token balance. The current network resolver still returns `NXDOMAIN` for Binance; the opt-in development DNS setting makes local API calls work. Wallet signing, settlement verification, a live-policy `TRADE` decision, and a durable decision journal remain to be built. No API keys or wallet secrets belong in this repository.

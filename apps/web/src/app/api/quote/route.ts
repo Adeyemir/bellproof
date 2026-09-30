@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ticker,
       tokenSymbol: asset.tokenSymbol,
+      targetAddress: asset.tokenContractAddress,
       platformId: asset.platformId,
       session: asset.session,
       receivedAtMs: Date.now(),

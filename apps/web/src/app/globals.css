@@ -137,10 +137,29 @@ a { color: inherit; text-decoration: none; }
 .result-top strong { font-size: 14px; }
 .result-top > span { font-size: 9px; font-weight: 800; letter-spacing: .1em; color: #9b791e; }
 .result-meta { color: #62665d; font-size: 11px; line-height: 1.6; margin: 9px 0 0; }
+.result-meta code { overflow-wrap: anywhere; }
 .result-emphasis { font-weight: 800; font-size: 19px; margin: 15px 0 0; }
 .result-emphasis span { font-size: 11px; font-weight: 700; color: #92938d; }
 .route-row { border-top: 1px solid var(--line); margin-top: 13px; padding-top: 13px; font-size: 12px; }
 .route-row p { color: #77796f; margin: 8px 0; }
+.preflight-card { background: #fff; }
+.preflight-decision { display: flex; align-items: baseline; gap: 12px; border-radius: 8px; padding: 13px 15px; margin-top: 15px; }
+.preflight-decision.is-wait { background: #fff7e5; color: #91690c; }
+.preflight-decision.is-block { background: #fff0eb; color: #a84e38; }
+.preflight-decision strong { font-size: 21px; letter-spacing: -.04em; }
+.preflight-decision span { font-size: 11px; font-weight: 800; letter-spacing: .04em; }
+.preflight-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+.preflight-facts > div { min-width: 0; }
+.preflight-facts span { display: block; font-size: 9px; color: #8d8e86; font-weight: 800; letter-spacing: .1em; }
+.preflight-facts strong { display: block; font-size: 12px; overflow-wrap: anywhere; margin-top: 5px; }
+.preflight-facts .sim-success { color: #2f7747; }
+.preflight-facts .sim-failed { color: #ac5139; }
+.preflight-facts small { display: block; font-size: 10px; color: #a1513d; line-height: 1.4; margin-top: 4px; }
+.preflight-detail { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 13px; }
+.preflight-detail summary { cursor: pointer; font-size: 11px; font-weight: 800; }
+.preflight-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f6f6f1; border-radius: 7px; padding: 12px; font-size: 10px; line-height: 1.5; }
+.preflight-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.preflight-actions span { color: #777970; font-size: 10px; line-height: 1.4; }
 
 .policy-fields { margin-top: 35px; }
 .policy-fields select { text-transform: capitalize; }
@@ -218,6 +237,7 @@ a { color: inherit; text-decoration: none; }
   .ticker-row { display: grid; }
   .ticker-row .button { width: 100%; }
   .field-grid, .wallet-fields { grid-template-columns: 1fr; }
+  .preflight-facts { grid-template-columns: 1fr; }
   .candidate-facts { gap: 14px 8px; }
   .site-footer { display: block; padding: 25px 0; }
   .site-footer p { margin: 8px 0 0 31px; }
