@@ -1,6 +1,6 @@
 # Bellproof live demo runbook
 
-This is the next verification gate, not a record of a completed trade. The public app is [live on Vercel](https://bellproof-jokanola-ridwan-adeyemis-projects.vercel.app/). A user-owned wallet must sign any approval or swap. Never put a recovery phrase, private key, or API secret in a screen recording or issue.
+This is the next verification gate, not a record of a completed trade. The public app is [live on Vercel](https://bellproof-one.vercel.app/). A user-owned wallet must sign any approval or swap. Never put a recovery phrase, private key, or API secret in a screen recording or issue.
 
 ## Before the market opens
 

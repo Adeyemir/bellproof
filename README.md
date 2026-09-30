@@ -46,7 +46,7 @@ Sources: [RWA Data API](https://web3.binance.com/en/dev-docs/catalog/web3-wallet
 
 ## Run the prototype
 
-Live demo: [Bellproof on Vercel](https://bellproof-jokanola-ridwan-adeyemis-projects.vercel.app/). The production API runs in Vercel's Singapore region; live NVDA discovery returned both Ondo and bStocks candidates on 30 September 2026.
+Live demo: [Bellproof on Vercel](https://bellproof-one.vercel.app/). The production API runs in Vercel's Singapore region; live NVDA discovery returned both Ondo and bStocks candidates on 30 September 2026.
 
 ```bash
 cd apps/web
