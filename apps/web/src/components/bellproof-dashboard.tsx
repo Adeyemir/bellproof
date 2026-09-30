@@ -11,6 +11,7 @@ import {
 import { proposeRebalance } from "@/lib/agent/proposal";
 import type { RebalanceProposal } from "@/lib/agent/proposal";
 import { assertConnectedWallet, connectBscWallet, readTokenBalances, sendWalletTransaction, waitForReceipt, type WalletReceipt } from "@/lib/wallet-client";
+import { evmAddressPattern } from "@/lib/binance/quote-data";
 
 interface MarketCandidate {
   ticker: string;
@@ -125,7 +126,7 @@ interface PortfolioResponse {
 }
 
 const explanations: Record<DecisionReason, string> = {
-  WRONG_CHAIN: "Only BSC mainnet (chain 56) is in scope.",
+  WRONG_CHAIN: "Only BSC mainnet is in scope.",
   STALE_MARKET_DATA: "The market observation is too old to use.",
   UNKNOWN_MARKET_STATE: "The underlying session could not be verified.",
   INVALID_POLICY_INPUT: "A number or policy limit is invalid.",
@@ -229,7 +230,7 @@ function PreflightPanel({ result, canSign, busy, nowMs, onApprove, onSwap }: {
         <p className="result-meta">Router and approval spender: <code>{result.execution.router}</code>. Approval spender checked against Binance&apos;s exact calldata.</p>
         <details className="preflight-detail"><summary>Approval payload · gas and nonce pending</summary><pre><code>{JSON.stringify(result.execution.approval, null, 2)}</code></pre></details>
         <details className="preflight-detail"><summary>Unsigned swap payload</summary><pre><code>{JSON.stringify(result.execution.swap, null, 2)}</code></pre></details>
-        <p className="result-meta">Chain ID 56 is verified from the route; nonce: {result.execution.swap.nonce ?? "not supplied by Binance"}. Quote ID: <code>{result.quote?.quoteId}</code></p>
+        <p className="result-meta">BSC mainnet route verified; nonce: {result.execution.swap.nonce ?? "not supplied by Binance"}. Quote ID: <code>{result.quote?.quoteId}</code></p>
       </>}
       {result.simulationNote && <p className="candidate-warning">{result.simulationNote}</p>}
       {quoteExpired && <p className="candidate-warning">This preflight quote has aged out. Run a fresh check before signing.</p>}
@@ -249,6 +250,8 @@ export function BellproofDashboard() {
   const [marketError, setMarketError] = useState<string | null>(null);
   const [marketErrorCode, setMarketErrorCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [workspaceView, setWorkspaceView] = useState<"live" | "lab">("live");
+  const [activeAsset, setActiveAsset] = useState<MarketCandidate | null>(null);
   const [walletAddress, setWalletAddress] = useState("");
   const [quoteAmount, setQuoteAmount] = useState("10");
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
@@ -362,6 +365,7 @@ export function BellproofDashboard() {
     event.preventDefault();
     setLoading(true);
     setMarket(null);
+    setActiveAsset(null);
     setMarketError(null);
     setMarketErrorCode(null);
     setQuote(null);
@@ -387,6 +391,21 @@ export function BellproofDashboard() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function selectAsset(candidate: MarketCandidate) {
+    if (activeAsset?.tokenContractAddress.toLowerCase() !== candidate.tokenContractAddress.toLowerCase()) {
+      setQuote(null);
+      setQuoteError(null);
+      setPreflightResult(null);
+      setPreflightError(null);
+      setPortfolio(null);
+      setPortfolioError(null);
+      setApprovalHash(null);
+      setExecutionStatus(null);
+    }
+    setActiveAsset(candidate);
+    document.getElementById("trade-setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function fetchQuote(candidate: MarketCandidate) {
@@ -446,6 +465,7 @@ export function BellproofDashboard() {
     try {
       const fresh = await requestFreshPreflight();
       saveEvidence({ id: crypto.randomUUID(), createdAtMs: Date.now(), status: "DECIDED", preflight: fresh });
+      document.getElementById("live-decision")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       setPreflightError(error instanceof Error ? error.message : "The preflight service could not be reached.");
     } finally {
@@ -476,6 +496,7 @@ export function BellproofDashboard() {
       setApprovalHash(hash);
       setExecutionStatus("Approval confirmed. Refreshing the quote, allowance, and swap simulation…");
       await requestFreshPreflight();
+      document.getElementById("live-decision")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       setExecutionStatus(error instanceof Error ? error.message : "Approval failed.");
     } finally {
@@ -561,10 +582,10 @@ export function BellproofDashboard() {
           <span className="brand-name">Bellproof<span>.</span></span>
         </a>
         <nav className="site-nav" aria-label="Main navigation">
-          <a href="#market">Market desk</a>
-          <a href="#policy">Policy lab</a>
+          <a href="#workspace" onClick={() => setWorkspaceView("live")}>Live workspace</a>
+          <a href="#workspace" onClick={() => setWorkspaceView("lab")}>Policy simulator</a>
         </nav>
-        <span className="network-pill"><span className="network-dot" />BSC MAINNET <span>/ 56</span></span>
+        <span className="network-pill"><span className="network-dot" />BSC MAINNET</span>
       </header>
 
       <section className="hero" aria-labelledby="hero-title">
@@ -573,49 +594,35 @@ export function BellproofDashboard() {
           <h1 id="hero-title">Keep your stock basket <em>within policy.</em></h1>
           <p className="hero-description">Bellproof proposes a rebalance from portfolio drift, then verifies whether it can execute. It checks the market session, asset restrictions, route quality, and user limits before any trade.</p>
           <div className="hero-actions">
-            <a className="button button-dark" href="#market">Explore market data <span aria-hidden="true">↗</span></a>
-            <a className="text-link" href="#policy">Try the policy lab <span aria-hidden="true">↗</span></a>
+            <a className="button button-dark" href="#workspace" onClick={() => setWorkspaceView("live")}>Open live workspace <span aria-hidden="true">↗</span></a>
+            <a className="text-link" href="#workspace" onClick={() => setWorkspaceView("lab")}>Try the policy simulator <span aria-hidden="true">↗</span></a>
           </div>
-          <p className="hero-footnote">SPOT ONLY <span>/</span> BSC CHAIN 56 <span>/</span> WALLET SIGNATURE REQUIRED</p>
+          <p className="hero-footnote">SPOT ONLY <span>/</span> BSC CHAIN <span>/</span> WALLET SIGNATURE REQUIRED</p>
         </div>
-        <aside className="hero-preview" aria-label="Sample policy decision">
-          <div className="preview-top"><span>DECISION PREVIEW</span><span className="preview-sample">SAMPLE INPUTS</span></div>
-          <div className="preview-content">
-            <p>BELLPROOF POLICY / CURRENT RESULT</p>
-            <strong className={"preview-action " + (decision ? actionStyles[decision.action] : "is-block")}>{decision?.action ?? "INVALID"}<span>.</span></strong>
-            <h2>{decision?.reason.replaceAll("_", " ") ?? "INVALID SAMPLE INPUT"}</h2>
-            <p>{decision ? explanations[decision.reason] : "Enter valid sample inputs in the policy lab."}</p>
-            <p className="preview-no-trade">No transaction submitted.</p>
-          </div>
-          <div className="preview-metrics">
-            <div><span>PROPOSAL</span><strong>{proposal?.side ?? "—"}</strong></div>
-            <div><span>DRIFT</span><strong>{proposal ? (proposal.driftBps / 100).toFixed(2) + "%" : "—"}</strong></div>
-            <div><span>TRIGGER</span><strong>3.00%</strong></div>
-          </div>
-        </aside>
       </section>
 
-      <div className="process-strip" aria-label="How Bellproof works">
-        <div><span>01</span><strong>Observe</strong><p>Wallet, issuer, session</p></div>
-        <div><span>02</span><strong>Propose</strong><p>Target versus actual weight</p></div>
-        <div><span>03</span><strong>Verify</strong><p>Route and policy gates</p></div>
+      <div id="workspace" className="workspace-heading">
+        <div><span className="section-kicker">THE WORKSPACE</span><h2>{workspaceView === "live" ? "From asset to decision." : "Test the policy."}</h2></div>
+        <p>{workspaceView === "live" ? "Live BSC data, wallet checks, and one clear result." : "Sample scenarios. No wallet or transaction required."}</p>
       </div>
 
-      <div className="workspace-heading">
-        <div><span className="section-kicker">THE WORKSPACE</span><h2>From token to decision.</h2></div>
-        <p>Inspect the market, then test how Bellproof responds.</p>
+      <div className="workspace-switch" aria-label="Workspace view">
+        <button type="button" className={workspaceView === "live" ? "is-active" : ""} aria-pressed={workspaceView === "live"} onClick={() => setWorkspaceView("live")}>Live execution</button>
+        <button type="button" className={workspaceView === "lab" ? "is-active" : ""} aria-pressed={workspaceView === "lab"} onClick={() => setWorkspaceView("lab")}>Policy simulator <span>Sample inputs</span></button>
       </div>
 
       <div className="workspace-grid">
-        <section id="market" className="workspace-panel market-panel" aria-labelledby="market-heading">
+        {workspaceView === "live" && <section id="market" className="workspace-panel market-panel" aria-labelledby="market-heading">
+          <div className="live-columns">
+          <div className="discovery-column">
           <div className="panel-header">
-            <div><span className="panel-index">01 / LIVE DATA</span><h3 id="market-heading">Market desk</h3><p>Find a tokenized stock on BSC and inspect its current trading state.</p></div>
+            <div><span className="panel-index">01 / CHOOSE AN ASSET</span><h3 id="market-heading">Find your stock token</h3><p>Check the issuer and market state before requesting a route.</p></div>
             <span className="panel-tag">BINANCE RWA</span>
           </div>
           <form onSubmit={lookUpMarket} className="ticker-form">
             <label htmlFor="ticker">STOCK TICKER</label>
             <div className="ticker-row">
-              <input id="ticker" value={ticker} onChange={(event) => setTicker(event.target.value.toUpperCase())} maxLength={10} placeholder="e.g. NVDA" autoComplete="off" className="text-input ticker-input" />
+              <input id="ticker" value={ticker} onChange={(event) => { setTicker(event.target.value.toUpperCase()); setActiveAsset(null); setMarket(null); setQuote(null); setPreflightResult(null); setPortfolio(null); }} maxLength={10} placeholder="e.g. NVDA" autoComplete="off" className="text-input ticker-input" />
               <button disabled={loading} type="submit" className="button button-gold">{loading ? "Checking…" : "Check ticker"} <span aria-hidden="true">↗</span></button>
             </div>
           </form>
@@ -624,19 +631,20 @@ export function BellproofDashboard() {
             {market && market.candidates.length === 0 && <div className="empty-state"><span>○</span><strong>No supported token found</strong><p>No bStocks or Ondo contract for {ticker.toUpperCase()} was returned on BSC. Try another ticker.</p></div>}
             {market && market.candidates.length > 0 && <div className="candidate-list">
               {market.candidates.map((candidate) => (
-                <article key={candidate.platformId + ":" + candidate.tokenContractAddress} className="candidate-card">
+                <article key={candidate.platformId + ":" + candidate.tokenContractAddress} className={`candidate-card ${activeAsset?.tokenContractAddress.toLowerCase() === candidate.tokenContractAddress.toLowerCase() ? "is-selected" : ""}`}>
                   <div className="candidate-top"><div><span className="issuer-label">{candidate.platformId.toUpperCase()}</span><h4>{candidate.companyName || candidate.ticker}<small> / {candidate.tokenSymbol}</small></h4></div><span className="session-pill">{candidate.session}</span></div>
-                  <div className="candidate-facts">
-                    <div><span>UNDERLYING OPEN</span><strong>{candidate.openState ? "Yes" : "No"}</strong></div>
-                    <div><span>RESTRICTION</span><strong>{candidate.restrictionReason ?? "None reported"}</strong></div>
-                    <div><span>NEXT OPEN</span><strong>{formatTime(candidate.nextOpenTimeMs)}</strong></div>
-                    <div><span>TOKEN / SHARE</span><strong>{candidate.tokenToShareRatio ?? "Unavailable"}</strong></div>
-                  </div>
-                  <p className="contract-line"><span>CONTRACT</span><code>{candidate.tokenContractAddress}</code></p>
+                  <p className="candidate-status">Restriction: {candidate.restrictionReason ?? "None reported"} · Underlying {candidate.openState ? "open" : "closed"}</p>
+                  <p className="contract-line"><span>BSC CONTRACT</span><code>{candidate.tokenContractAddress}</code></p>
                   {candidate.restrictionMessage && <p className="candidate-warning">{candidate.restrictionMessage}</p>}
                   {candidate.profileUnavailable && <p className="candidate-warning">Issuer profile could not be fetched.</p>}
-                  {candidate.attestations.length > 0 && <div className="attestations">{candidate.attestations.map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer">{link.label.replaceAll(/([A-Z])/g, " $1").trim()} ↗</a>)}</div>}
-                  <div className="candidate-actions"><button type="button" disabled={quoteLoading} onClick={() => fetchQuote(candidate)} className="button button-outline">{quoteLoading ? "Requesting…" : "Get live routes"}</button><button type="button" disabled={portfolioLoading} onClick={() => fetchPortfolio(candidate)} className="button button-quiet">{portfolioLoading ? "Reading…" : "Propose from basket"}</button></div>
+                  <div className="candidate-actions"><button type="button" onClick={() => selectAsset(candidate)} aria-pressed={activeAsset?.tokenContractAddress.toLowerCase() === candidate.tokenContractAddress.toLowerCase()} className="button button-outline">{activeAsset?.tokenContractAddress.toLowerCase() === candidate.tokenContractAddress.toLowerCase() ? "Selected asset" : "Continue with this asset"}</button></div>
+                  <details className="asset-details"><summary>Market and issuer details</summary>
+                    <div className="candidate-facts">
+                      <div><span>NEXT OPEN</span><strong>{formatTime(candidate.nextOpenTimeMs)}</strong></div>
+                      <div><span>TOKEN / SHARE</span><strong>{candidate.tokenToShareRatio ?? "Unavailable"}</strong></div>
+                    </div>
+                    {candidate.attestations.length > 0 && <div className="attestations">{candidate.attestations.map((link) => <a key={link.label} href={link.url} target="_blank" rel="noreferrer">{link.label.replaceAll(/([A-Z])/g, " $1").trim()} ↗</a>)}</div>}
+                  </details>
                 </article>
               ))}
               <p className="source-note">Observed {formatTime(market.observedAtMs)}. A fresh quote and route checks are required before execution.</p>
@@ -644,15 +652,28 @@ export function BellproofDashboard() {
             {!market && !marketError && !loading && <div className="empty-state"><span>↗</span><strong>Start with a ticker</strong><p>Search an equity symbol to see its BSC token, issuer, and market session.</p></div>}
           </div>
 
-          {market && market.candidates.length > 0 && <div className="wallet-tools">
-            <div className="subsection-header"><div><span className="section-kicker">LIVE EXECUTION</span><h4>Quote, verify, then sign</h4></div><span className="read-only-pill">BSC MAINNET</span></div>
+          </div>
+          <div id="trade-setup" className="wallet-tools">
+            <div className="panel-header"><div><span className="panel-index">02 / VERIFY THE ROUTE</span><h3>Check before you sign</h3><p>Select an asset, connect a wallet, then ask Bellproof for a live decision.</p></div></div>
+            <div id="live-decision" className={`live-decision ${preflightResult ? `is-${preflightResult.decision.action.toLowerCase()}` : "is-pending"}`} aria-live="polite">
+              <span>03 / CURRENT DECISION</span>
+              <strong>{preflightResult?.decision.action ?? "NOT CHECKED"}</strong>
+              <p>{preflightResult ? preflightResult.decision.reason.replaceAll("_", " ") : "Choose a token and build a fresh route to see what Bellproof allows."}</p>
+            </div>
+            <div className="active-asset">
+              {activeAsset ? <><span>SELECTED TOKEN</span><strong>{activeAsset.tokenSymbol}</strong><small>{activeAsset.platformId.toUpperCase()} · {activeAsset.session} at lookup · {activeAsset.tokenContractAddress.slice(0, 8)}…{activeAsset.tokenContractAddress.slice(-6)}</small></> : <><span>SELECTED TOKEN</span><strong>None yet</strong><small>Choose a stock token from the left.</small></>}
+            </div>
             <p className="subsection-description">Connect your wallet for signing, or enter any BSC address for read-only inspection. Bellproof checks the live basket, route, allowance, gas, and simulations before offering a wallet action.</p>
             <div className="wallet-connection"><button type="button" className="button button-dark" onClick={connectWallet}>{connectedWallet ? "Reconnect BSC wallet" : "Connect BSC wallet"}</button>{connectedWallet && <span>Connected: <code>{connectedWallet}</code></span>}</div>
             {walletError && <p className="message message-error">{walletError}</p>}
             <div className="field-grid wallet-fields">
               <label className="field"><span>WALLET ADDRESS</span><input value={walletAddress} onChange={(event) => { setWalletAddress(event.target.value); setQuote(null); setPreflightResult(null); setApprovalHash(null); if (event.target.value.toLowerCase() !== connectedWallet?.toLowerCase()) setConnectedWallet(null); }} placeholder="0x…" autoComplete="off" className="text-input mono-input" /></label>
               <label className="field"><span>USDT QUOTE SIZE</span><input type="number" min="0.01" max="10" step="0.01" value={quoteAmount} onChange={(event) => { setQuoteAmount(event.target.value); setQuote(null); setPreflightResult(null); setApprovalHash(null); }} className="text-input" /></label>
-              <label className="field"><span>STOCK TARGET %</span><input type="number" min="0" max="100" step="0.01" value={liveTargetWeight} onChange={(event) => { setLiveTargetWeight(event.target.value); setPreflightResult(null); }} className="text-input" /></label>
+              <label className="field"><span>STOCK TARGET %</span><input type="number" min="0" max="100" step="0.01" value={liveTargetWeight} onChange={(event) => { setLiveTargetWeight(event.target.value); setPreflightResult(null); setPortfolio(null); }} className="text-input" /></label>
+            </div>
+            <div className="execution-actions">
+              <button type="button" disabled={!activeAsset || !evmAddressPattern.test(walletAddress.trim()) || quoteLoading} onClick={() => activeAsset && fetchQuote(activeAsset)} className="button button-gold">{quoteLoading ? "Requesting…" : "Get live routes"}</button>
+              <button type="button" disabled={!activeAsset || !evmAddressPattern.test(walletAddress.trim()) || portfolioLoading} onClick={() => activeAsset && fetchPortfolio(activeAsset)} className="button button-quiet">{portfolioLoading ? "Reading…" : "Propose from basket"}</button>
             </div>
             <div aria-live="polite" className="tool-results">
               {quoteError && <p className="message message-error">{quoteError}</p>}
@@ -660,15 +681,16 @@ export function BellproofDashboard() {
               {quote?.routes.some((route) => route.executionMode === "SWAP") && <button type="button" disabled={preflightLoading} onClick={runPreflight} className="button button-outline">{preflightLoading ? "Simulating…" : "Build and simulate fresh route"}</button>}
               {preflightError && <p className="message message-error">{preflightError}</p>}
               {preflightResult && <PreflightPanel result={preflightResult} canSign={!!connectedWallet && connectedWallet.toLowerCase() === walletAddress.trim().toLowerCase()} busy={executionBusy} nowMs={viewNowMs} onApprove={approveExactAmount} onSwap={executeSwap} />}
-              {executionStatus && <p className="message execution-message" aria-live="polite">{executionStatus}</p>}
+              {executionStatus && <p className="message execution-message" aria-live="polite">{executionStatus} {evidenceHistory.length > 0 && <a href="#evidence">View evidence ↓</a>}</p>}
               {portfolioError && <p className="message message-error">{portfolioError}</p>}
               {portfolio && <div className="result-card"><div className="result-top"><strong>Basket proposal / {portfolio.tokenSymbol}</strong><span>LIVE WALLET READ</span></div><p className="result-meta">Stock {"$"}{(portfolio.stockValueCents / 100).toFixed(2)} · USDT {"$"}{(portfolio.stableValueCents / 100).toFixed(2)} · target {(portfolio.proposal.targetStockWeightBps / 100).toFixed(2)}%</p><p className="result-emphasis">{portfolio.proposal.side === "HOLD" ? "HOLD" : portfolio.proposal.side + " ≈ $" + (portfolio.proposal.proposedTradeCents / 100).toFixed(2)} <span>/ {portfolio.proposal.reason.replaceAll("_", " ")}</span></p><p className="result-meta">Valued with {portfolio.valuationSource} at {formatTime(portfolio.observedAtMs)}. A fresh route and policy review are still required.</p></div>}
             </div>
-            {evidenceHistory.length > 0 && <div className="evidence-journal"><div className="subsection-header"><div><span className="section-kicker">RECORD</span><h4>Decision evidence</h4></div><span className="read-only-pill">THIS BROWSER</span></div><p className="subsection-description">Recent records stay in this browser. Open or download a record to inspect its preflight, transaction hash, receipt, and balance delta.</p>{evidenceHistory.map((record) => <details key={record.id} className="preflight-detail"><summary>{record.status} · {record.preflight.decision.action} · {formatTime(record.createdAtMs)} {record.swapHash ? `· ${record.swapHash.slice(0, 10)}…` : ""}</summary>{record.swapHash && <p className="result-meta"><a href={`https://bscscan.com/tx/${record.swapHash}`} target="_blank" rel="noreferrer">View BSC transaction ↗</a></p>}<pre><code>{JSON.stringify(record, null, 2)}</code></pre></details>)}</div>}
-          </div>}
-        </section>
+          </div>
+          </div>
+          {evidenceHistory.length > 0 && <div id="evidence" className="evidence-journal"><div className="subsection-header"><div><span className="section-kicker">RECORD</span><h4>Decision evidence</h4></div><span className="read-only-pill">THIS BROWSER</span></div><p className="subsection-description">Recent records stay in this browser. Open or download a record to inspect its preflight, transaction hash, receipt, and balance delta.</p>{evidenceHistory.map((record) => <details key={record.id} className="preflight-detail"><summary>{record.status} · {record.preflight.decision.action} · {formatTime(record.createdAtMs)} {record.swapHash ? `· ${record.swapHash.slice(0, 10)}…` : ""}</summary>{record.swapHash && <p className="result-meta"><a href={`https://bscscan.com/tx/${record.swapHash}`} target="_blank" rel="noreferrer">View BSC transaction ↗</a></p>}<pre><code>{JSON.stringify(record, null, 2)}</code></pre></details>)}</div>}
+        </section>}
 
-        <section id="policy" className="workspace-panel policy-panel" aria-labelledby="policy-heading">
+        {workspaceView === "lab" && <section id="policy" className="workspace-panel policy-panel" aria-labelledby="policy-heading">
           <div className="panel-header"><div><span className="panel-index">02 / SIMULATION</span><h3 id="policy-heading">Policy lab</h3><p>Change sample conditions to see when the same rule set waits or blocks.</p></div><span className="panel-tag panel-tag-sample">SAMPLE INPUTS</span></div>
           <div className="field-grid policy-fields">
             <label className="field"><span>MARKET SESSION</span><select value={session} onChange={(event) => setSession(event.target.value as MarketSession)} className="text-input">{sessions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
@@ -682,7 +704,7 @@ export function BellproofDashboard() {
           <div className="proposal-card"><span className="output-label">01 / AGENT PROPOSAL</span><div className="proposal-title"><strong>{proposal?.side === "HOLD" ? "No rebalance proposed" : proposal ? proposal.side + " $" + (proposal.proposedTradeCents / 100).toFixed(2) + " of " + (ticker || "stock token") : "Invalid sample inputs"}</strong><span>{proposal?.side ?? "—"}</span></div><p>{proposal ? "Current " + (proposal.currentStockWeightBps / 100).toFixed(2) + "% · target " + (proposal.targetStockWeightBps / 100).toFixed(2) + "% · drift " + (proposal.driftBps / 100).toFixed(2) + " points" : "Enter a valid basket value and weights from 0% to 100%."}</p></div>
           <div aria-live="polite" className={"decision-output " + (decision ? actionStyles[decision.action] : "is-block")}><div className="decision-top"><span>02 / POLICY DECISION</span><strong>{decision?.action ?? "INVALID"}</strong></div><h4>{decision?.reason.replaceAll("_", " ") ?? "INVALID SAMPLE INPUT"}</h4><p>{decision ? explanations[decision.reason] : "Enter valid sample inputs."}</p></div>
           <p className="policy-footnote">Sample limits: 3% drift, $10 regular, $3 outside regular hours, $20 daily, 50 bps impact. This policy lab uses sample inputs; live execution uses a fresh basket and connected wallet.</p>
-        </section>
+        </section>}
       </div>
 
       <footer className="site-footer"><div><span className="footer-icon" aria-hidden="true" /><strong>Bellproof</strong><span> / Tokenized Stocks Products &amp; Agents</span></div><p>Policy first. Proof follows.</p></footer>

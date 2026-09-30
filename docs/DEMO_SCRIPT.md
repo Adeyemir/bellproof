@@ -12,7 +12,7 @@ This is a script for a **recorded** demo after the small mainnet test. Read the 
 
 ### 0:00–0:22 — Why this exists
 
-**Show:** Open the Bellproof home page. Keep “Keep your stock basket within policy” and “PROPOSE / VERIFY / EXECUTE / RECORD” visible. The decision preview is labelled **SAMPLE INPUTS**; do not describe it as a live decision.
+**Show:** Open the Bellproof home page. Keep “Keep your stock basket within policy” and “PROPOSE / VERIFY / EXECUTE / RECORD” visible, then open **Live execution** in the workspace.
 
 **Say:**
 
@@ -20,7 +20,7 @@ This is a script for a **recorded** demo after the small mainnet test. Read the 
 
 ### 0:22–0:52 — Find the actual BSC asset
 
-**Show:** In **Market desk**, search `NVDA` with **Check ticker**. Frame the Ondo `NVDAon` and bStocks `NVDAB` cards, including contract, session, and restriction. Use the live result at recording time.
+**Show:** In **Find your stock token**, search `NVDA` with **Check ticker**. Frame the Ondo `NVDAon` and bStocks `NVDAB` cards, including contract, session, and restriction. Click **Continue with this asset** on NVDAon. Use the live result at recording time.
 
 **Say:**
 
@@ -28,7 +28,7 @@ This is a script for a **recorded** demo after the small mainnet test. Read the 
 
 ### 0:52–1:22 — Show that it refuses trades
 
-**Show:** Use a clearly dated **live** premarket clip of an NVDAon preflight returning `WAIT / EXTENDED_HOURS_OPT_OUT`, then a live NVDAB preflight returning `BLOCK / UNKNOWN_MARKET_STATE`, if you have captured both. Keep the action and reason code legible. Do not present clips from different times as one continuous live session. If either state is unavailable, use the **Policy lab**, visibly labelled **SAMPLE INPUTS**: leave **Allow premarket, postmarket, and overnight** unchecked, select `premarket` for `WAIT`, then check **Issuer or market pause reported** for `BLOCK`.
+**Show:** Use a clearly dated **live** premarket clip of an NVDAon preflight returning `WAIT / EXTENDED_HOURS_OPT_OUT`, then a live NVDAB preflight returning `BLOCK / UNKNOWN_MARKET_STATE`, if you have captured both. Keep the action and reason code legible. Do not present clips from different times as one continuous live session. If either state is unavailable, switch to **Policy simulator** and use its **Policy lab**, visibly labelled **SAMPLE INPUTS**: leave **Allow premarket, postmarket, and overnight** unchecked, select `premarket` for `WAIT`, then check **Issuer or market pause reported** for `BLOCK`.
 
 **Say, if both clips are live:**
 
@@ -36,11 +36,11 @@ This is a script for a **recorded** demo after the small mainnet test. Read the 
 
 **Say, if using the Policy lab:**
 
-> These are labelled sample inputs in the policy lab. A premarket session makes this policy wait. A reported pause makes it block. Neither result can submit a transaction. The live market check is the separate panel on the left.
+> These are labelled sample inputs in the policy lab. A premarket session makes this policy wait. A reported pause makes it block. Neither result can submit a transaction. The separate Live execution view uses current market data.
 
 ### 1:22–1:54 — Read the wallet and propose
 
-**Show:** Connect your BSC wallet. Set **USDT quote size** to `10` and **STOCK TARGET %** to `100` for the tiny test basket. On the NVDAon card, click **Propose from basket**. Frame the actual balance and `BUY` proposal. Only use this take if a funded wallet produces that proposal.
+**Show:** Switch back to **Live execution** if you used the simulator. In the right execution column, connect your BSC wallet. Set **USDT quote size** to `10` and **STOCK TARGET %** to `100` for the tiny test basket. Click **Propose from basket**. Frame the actual balance and `BUY` proposal. Only use this take if a funded wallet produces that proposal.
 
 **Say:**
 
@@ -48,7 +48,7 @@ This is a script for a **recorded** demo after the small mainnet test. Read the 
 
 ### 1:54–2:36 — Inspect the route and preflight
 
-**Show:** On NVDAon, click **Get live routes**, then **Build and simulate fresh route**. Show the route mode, quoted and minimum output, 0.5% slippage, wallet balances, approval and swap simulations, and the router/spender. If the status is `WAIT / APPROVAL_REQUIRED`, leave that visible before moving on.
+**Show:** In the same right column, click **Get live routes**, then **Build and simulate fresh route**. Show the prominent decision, route mode, quoted and minimum output, 0.5% slippage, wallet balances, approval and swap simulations, and the router/spender. If the status is `WAIT / APPROVAL_REQUIRED`, leave that visible before moving on.
 
 **Say:**
 
