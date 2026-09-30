@@ -48,7 +48,7 @@ This is a script for a **recorded** demo after the small mainnet test. Read the 
 
 ### 1:54–2:36 — Inspect the route and preflight
 
-**Show:** In the same right column, click **Get live routes**, then **Build and simulate fresh route**. Show the prominent decision, route mode, quoted and minimum output, 0.5% slippage, wallet balances, approval and swap simulations, and the router/spender. If the status is `WAIT / APPROVAL_REQUIRED`, leave that visible before moving on.
+**Show:** In the same right column, click **Get live routes**, then **Check transaction · no wallet charge**. Show the prominent decision, route mode, quoted and minimum output, 0.5% slippage, wallet balances, approval and swap simulations, and the router/spender. If the status is `WAIT / APPROVAL_REQUIRED`, leave that visible before moving on.
 
 **Say:**
 

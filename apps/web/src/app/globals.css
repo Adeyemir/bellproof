@@ -125,11 +125,13 @@ a { color: inherit; text-decoration: none; }
 .wallet-connection { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 18px; }
 .wallet-connection span { font-size: 11px; color: #5b6258; overflow-wrap: anywhere; }
 .wallet-connection code { font-size: 10px; }
+.wallet-connection .wallet-connected { border: 1px solid #cce4d1; border-radius: 99px; background: #f0faf2; color: #317b4e; font-weight: 800; padding: 8px 11px; }
 .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 19px 14px; }
 .wallet-fields { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
 .mono-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 500; }
 .execution-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 17px; }
 .execution-actions .button { min-height: 42px; }
+.transaction-cost-note { margin: 0; border-left: 3px solid #d9b447; background: #fffaf0; padding: 10px 12px; color: #625536; font-size: 11px; line-height: 1.55; }
 .live-decision { scroll-margin-top: 16px; border-radius: 13px; border: 1px solid #e5e3da; border-left: 5px solid #b7b7ad; background: #f6f6f2; padding: 18px 20px; margin-bottom: 16px; }
 .live-decision > span { color: #767971; font-size: 9px; font-weight: 800; letter-spacing: .13em; }
 .live-decision strong { display: block; font-size: 29px; line-height: 1.1; letter-spacing: -.055em; margin-top: 8px; }
@@ -172,6 +174,9 @@ a { color: inherit; text-decoration: none; }
 .evidence-journal { border-top: 1px solid var(--line); margin-top: 30px; padding-top: 25px; }
 .evidence-journal a { text-decoration: underline; color: #72540f; }
 .evidence-journal pre { max-height: 320px; overflow: auto; }
+.evidence-summary { margin: 12px 0; border-radius: 8px; background: #fafaf7; padding: 11px 13px; }
+.evidence-summary p { font-size: 11px; line-height: 1.5; color: #62665d; margin: 4px 0; overflow-wrap: anywhere; }
+.evidence-summary strong { color: var(--ink); }
 
 .policy-fields { margin-top: 35px; }
 .policy-fields select { text-transform: capitalize; }

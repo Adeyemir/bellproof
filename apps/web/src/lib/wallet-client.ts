@@ -3,12 +3,25 @@ import { bscUsdtAddress, evmAddressPattern } from "./binance/quote-data";
 
 interface InjectedProvider {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+  on?(event: "accountsChanged" | "chainChanged", listener: () => void): void;
+  removeListener?(event: "accountsChanged" | "chainChanged", listener: () => void): void;
 }
 
 function provider(): InjectedProvider {
   const injected = (window as Window & { ethereum?: InjectedProvider }).ethereum;
   if (!injected) throw new Error("Install or open an EVM wallet to sign on BSC.");
   return injected;
+}
+
+export function watchWalletChanges(onChange: () => void): () => void {
+  const injected = (window as Window & { ethereum?: InjectedProvider }).ethereum;
+  if (!injected?.on) return () => {};
+  injected.on("accountsChanged", onChange);
+  injected.on("chainChanged", onChange);
+  return () => {
+    injected.removeListener?.("accountsChanged", onChange);
+    injected.removeListener?.("chainChanged", onChange);
+  };
 }
 
 function stringResult(value: unknown, label: string): string {

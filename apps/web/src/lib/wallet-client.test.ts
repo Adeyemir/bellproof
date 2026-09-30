@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { connectBscWallet, sendWalletTransaction } from "./wallet-client";
+import { connectBscWallet, sendWalletTransaction, watchWalletChanges } from "./wallet-client";
 import type { UnsignedEvmTransaction } from "./binance/swap-preflight";
 
 const wallet = "0x32a0b6d4dbe7b88c209b4bd3c8137043cf26a5b9";
@@ -43,5 +43,19 @@ describe("injected BSC signing boundary", () => {
     vi.stubGlobal("window", { ethereum: { request } });
     await expect(connectBscWallet()).resolves.toBe(wallet);
     expect(request).toHaveBeenCalledWith({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x38" }] });
+  });
+
+  it("detects account and chain changes and removes both listeners", () => {
+    const listeners = new Map<string, () => void>();
+    const on = vi.fn((event: string, listener: () => void) => listeners.set(event, listener));
+    const removeListener = vi.fn((event: string) => listeners.delete(event));
+    vi.stubGlobal("window", { ethereum: { request: vi.fn(), on, removeListener } });
+    const changed = vi.fn();
+    const stop = watchWalletChanges(changed);
+    listeners.get("accountsChanged")?.();
+    listeners.get("chainChanged")?.();
+    expect(changed).toHaveBeenCalledTimes(2);
+    stop();
+    expect(listeners.size).toBe(0);
   });
 });

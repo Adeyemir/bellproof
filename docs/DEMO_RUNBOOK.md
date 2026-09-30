@@ -12,10 +12,10 @@ This is the next verification gate, not a record of a completed trade. The publi
 ## When the live session is regular
 
 1. Refresh ticker discovery, select NVDAon, and click **Get live routes** in the right execution column. Check the route mode and output.
-2. Click **Build and simulate fresh route**. Inspect the decision, source and destination tokens, router, spender, exact input, minimum output, quote age, and simulation results. Stop if any field or result is unexpected.
+2. Click **Check transaction · no wallet charge**. This runs Binance transaction simulations without moving funds. Inspect the decision, source and destination tokens, router, spender, exact input, minimum output, quote age, and simulation results. Stop if any field or result is unexpected.
 3. If Bellproof says `WAIT / APPROVAL_REQUIRED`, click **Approve exact USDT amount** and confirm only the exact amount and spender shown in the app. Wait for the approval receipt. Bellproof will request a new quote and simulation against the mined allowance.
 4. Continue only if a fresh preflight returns `TRADE / READY_TO_SIGN`. Click **Review and sign swap**, inspect the wallet prompt, and confirm. Each wallet prompt is preceded by a new preflight; an expired quote or failed simulation disables signing.
-5. Wait for the BSC receipt and compare the USDT and NVDAon balances. The evidence journal should show `SETTLED` only after the receipt succeeds and both balance changes are observed. Download its JSON and retain the BscScan transaction link. If it shows `REVERTED`, `SETTLEMENT_UNVERIFIED`, or an error, keep that exact result in the DX log and debug before claiming a completed trade.
+5. Wait for the BSC receipt and compare the USDT and NVDAon balances. The evidence journal should show `SETTLED` only after the receipt succeeds and both balance changes are observed. Export the full record JSON from the journal and retain the BscScan transaction link. If it shows `REVERTED`, `SETTLEMENT_UNVERIFIED`, or an error, keep that exact result in the DX log and debug before claiming a completed trade.
 
 ## Submission evidence
 

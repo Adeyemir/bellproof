@@ -10,7 +10,7 @@ import {
 } from "@/lib/session-policy";
 import { proposeRebalance } from "@/lib/agent/proposal";
 import type { RebalanceProposal } from "@/lib/agent/proposal";
-import { assertConnectedWallet, connectBscWallet, readTokenBalances, sendWalletTransaction, waitForReceipt, type WalletReceipt } from "@/lib/wallet-client";
+import { assertConnectedWallet, connectBscWallet, readTokenBalances, sendWalletTransaction, waitForReceipt, watchWalletChanges, type WalletReceipt } from "@/lib/wallet-client";
 import { evmAddressPattern } from "@/lib/binance/quote-data";
 
 interface MarketCandidate {
@@ -180,6 +180,16 @@ function formatTokenAmount(raw: string, decimals: number): string {
   }
 }
 
+function downloadJson(filename: string, value: unknown) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 function PreflightPanel({ result, canSign, busy, nowMs, onApprove, onSwap }: {
   result: PreflightResponse;
   canSign: boolean;
@@ -189,16 +199,6 @@ function PreflightPanel({ result, canSign, busy, nowMs, onApprove, onSwap }: {
   onSwap: () => void;
 }) {
   const quoteExpired = !!result.quote && nowMs >= result.quote.estimatedExpiryMs;
-  function downloadEvidence() {
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `bellproof-preflight-${Date.now()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
   return (
     <div className="result-card preflight-card">
       <div className="result-top"><strong>Execution preflight</strong><span>FRESH BSC CHECKS</span></div>
@@ -228,8 +228,6 @@ function PreflightPanel({ result, canSign, busy, nowMs, onApprove, onSwap }: {
       {result.basket && <p className="result-meta">Basket: {result.basket.proposal.side} ${String((result.basket.proposal.proposedTradeCents / 100).toFixed(2))} proposed · current {(result.basket.proposal.currentStockWeightBps / 100).toFixed(2)}% · target {(result.basket.proposal.targetStockWeightBps / 100).toFixed(2)}%.</p>}
       {result.execution && <>
         <p className="result-meta">Router and approval spender: <code>{result.execution.router}</code>. Approval spender checked against Binance&apos;s exact calldata.</p>
-        <details className="preflight-detail"><summary>Approval payload · gas and nonce pending</summary><pre><code>{JSON.stringify(result.execution.approval, null, 2)}</code></pre></details>
-        <details className="preflight-detail"><summary>Unsigned swap payload</summary><pre><code>{JSON.stringify(result.execution.swap, null, 2)}</code></pre></details>
         <p className="result-meta">BSC mainnet route verified; nonce: {result.execution.swap.nonce ?? "not supplied by Binance"}. Quote ID: <code>{result.quote?.quoteId}</code></p>
       </>}
       {result.simulationNote && <p className="candidate-warning">{result.simulationNote}</p>}
@@ -237,9 +235,13 @@ function PreflightPanel({ result, canSign, busy, nowMs, onApprove, onSwap }: {
       <div className="preflight-actions">
         {result.approvalAllowed && <button type="button" disabled={!canSign || busy} onClick={onApprove} className="button button-gold">Approve exact USDT amount</button>}
         {result.signingEnabled && <button type="button" disabled={!canSign || busy || !result.quote || quoteExpired} onClick={onSwap} className="button button-dark">Review and sign swap</button>}
-        <button type="button" onClick={downloadEvidence} className="button button-quiet">Download evidence JSON</button>
         <span>{canSign ? "A fresh preflight runs again before each wallet prompt." : "Connect the matching BSC wallet to enable signing."}</span>
       </div>
+      <details className="preflight-detail"><summary>Technical evidence for developers</summary>
+        <p className="result-meta">These unsigned transaction fields are what the wallet would be asked to sign. Opening or exporting them does not submit a transaction.</p>
+        {result.execution && <><p className="result-meta">Approval payload</p><pre><code>{JSON.stringify(result.execution.approval, null, 2)}</code></pre><p className="result-meta">Swap payload</p><pre><code>{JSON.stringify(result.execution.swap, null, 2)}</code></pre></>}
+        <button type="button" onClick={() => downloadJson(`bellproof-preflight-${Date.now()}.json`, result)} className="button button-quiet">Export preflight JSON</button>
+      </details>
     </div>
   );
 }
@@ -291,6 +293,17 @@ export function BellproofDashboard() {
     const timer = window.setInterval(() => setViewNowMs(Date.now()), 1_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!connectedWallet) return;
+    return watchWalletChanges(() => {
+      setConnectedWallet(null);
+      setWalletError("Wallet account or network changed. Refresh the connection before signing.");
+      setQuote(null);
+      setPreflightResult(null);
+      setApprovalHash(null);
+    });
+  }, [connectedWallet]);
 
   function saveEvidence(record: EvidenceRecord) {
     setEvidenceHistory((current) => {
@@ -583,7 +596,7 @@ export function BellproofDashboard() {
         </a>
         <nav className="site-nav" aria-label="Main navigation">
           <a href="#workspace" onClick={() => setWorkspaceView("live")}>Live workspace</a>
-          <a href="#workspace" onClick={() => setWorkspaceView("lab")}>Policy simulator</a>
+          <a href="#workspace" onClick={() => setWorkspaceView("lab")}>Sample policy lab</a>
         </nav>
         <span className="network-pill"><span className="network-dot" />BSC MAINNET</span>
       </header>
@@ -595,7 +608,7 @@ export function BellproofDashboard() {
           <p className="hero-description">Bellproof proposes a rebalance from portfolio drift, then verifies whether it can execute. It checks the market session, asset restrictions, route quality, and user limits before any trade.</p>
           <div className="hero-actions">
             <a className="button button-dark" href="#workspace" onClick={() => setWorkspaceView("live")}>Open live workspace <span aria-hidden="true">↗</span></a>
-            <a className="text-link" href="#workspace" onClick={() => setWorkspaceView("lab")}>Try the policy simulator <span aria-hidden="true">↗</span></a>
+            <a className="text-link" href="#workspace" onClick={() => setWorkspaceView("lab")}>Try the sample policy lab <span aria-hidden="true">↗</span></a>
           </div>
           <p className="hero-footnote">SPOT ONLY <span>/</span> BSC CHAIN <span>/</span> WALLET SIGNATURE REQUIRED</p>
         </div>
@@ -608,7 +621,7 @@ export function BellproofDashboard() {
 
       <div className="workspace-switch" aria-label="Workspace view">
         <button type="button" className={workspaceView === "live" ? "is-active" : ""} aria-pressed={workspaceView === "live"} onClick={() => setWorkspaceView("live")}>Live execution</button>
-        <button type="button" className={workspaceView === "lab" ? "is-active" : ""} aria-pressed={workspaceView === "lab"} onClick={() => setWorkspaceView("lab")}>Policy simulator <span>Sample inputs</span></button>
+        <button type="button" className={workspaceView === "lab" ? "is-active" : ""} aria-pressed={workspaceView === "lab"} onClick={() => setWorkspaceView("lab")}>Sample policy lab</button>
       </div>
 
       <div className="workspace-grid">
@@ -659,12 +672,13 @@ export function BellproofDashboard() {
               <span>03 / CURRENT DECISION</span>
               <strong>{preflightResult?.decision.action ?? "NOT CHECKED"}</strong>
               <p>{preflightResult ? preflightResult.decision.reason.replaceAll("_", " ") : "Choose a token and build a fresh route to see what Bellproof allows."}</p>
+              {preflightResult?.decision.reason === "UNKNOWN_MARKET_STATE" && <p>This asset is blocked because its market session is unverified. Your wallet connection is separate.</p>}
             </div>
             <div className="active-asset">
               {activeAsset ? <><span>SELECTED TOKEN</span><strong>{activeAsset.tokenSymbol}</strong><small>{activeAsset.platformId.toUpperCase()} · {activeAsset.session} at lookup · {activeAsset.tokenContractAddress.slice(0, 8)}…{activeAsset.tokenContractAddress.slice(-6)}</small></> : <><span>SELECTED TOKEN</span><strong>None yet</strong><small>Choose a stock token from the left.</small></>}
             </div>
             <p className="subsection-description">Connect your wallet for signing, or enter any BSC address for read-only inspection. Bellproof checks the live basket, route, allowance, gas, and simulations before offering a wallet action.</p>
-            <div className="wallet-connection"><button type="button" className="button button-dark" onClick={connectWallet}>{connectedWallet ? "Reconnect BSC wallet" : "Connect BSC wallet"}</button>{connectedWallet && <span>Connected: <code>{connectedWallet}</code></span>}</div>
+            <div className="wallet-connection"><button type="button" className="button button-dark" onClick={connectWallet}>{connectedWallet ? "Refresh wallet connection" : "Connect BSC wallet"}</button>{connectedWallet && <span className="wallet-connected">BSC wallet connected · <code>{connectedWallet.slice(0, 6)}…{connectedWallet.slice(-4)}</code></span>}</div>
             {walletError && <p className="message message-error">{walletError}</p>}
             <div className="field-grid wallet-fields">
               <label className="field"><span>WALLET ADDRESS</span><input value={walletAddress} onChange={(event) => { setWalletAddress(event.target.value); setQuote(null); setPreflightResult(null); setApprovalHash(null); if (event.target.value.toLowerCase() !== connectedWallet?.toLowerCase()) setConnectedWallet(null); }} placeholder="0x…" autoComplete="off" className="text-input mono-input" /></label>
@@ -678,7 +692,8 @@ export function BellproofDashboard() {
             <div aria-live="polite" className="tool-results">
               {quoteError && <p className="message message-error">{quoteError}</p>}
               {quote && <div className="result-card"><div className="result-top"><strong>Live routes / {quote.tokenSymbol}</strong><span>{quote.routes.length} ROUTE(S)</span></div><p className="result-meta">{quote.platformId} · {quote.session} · received {formatTime(quote.receivedAtMs)} · estimated 30-second lifetime</p>{quote.session === "unknown" && <p className="candidate-warning">Binance did not identify this market session. This quote is for inspection; policy blocks execution until the session is verified.</p>}{quote.routes.length === 0 && <p className="candidate-warning">No valid route returned for this amount and wallet.</p>}{quote.routes.map((route) => <div key={route.quoteId} className="route-row"><strong>{route.vendorName} · {route.executionMode} / ≈ {formatTokenAmount(route.outputAmount, route.outputDecimals)} {route.outputSymbol}</strong><p>Impact: {route.priceImpactBps === null ? "Unavailable" : route.priceImpactBps.toFixed(2) + " bps"} · Fee: {route.tradeFeeUsd === null ? "Unavailable" : "$" + route.tradeFeeUsd}</p><code>Quote ID: {route.quoteId}</code></div>)}</div>}
-              {quote?.routes.some((route) => route.executionMode === "SWAP") && <button type="button" disabled={preflightLoading} onClick={runPreflight} className="button button-outline">{preflightLoading ? "Simulating…" : "Build and simulate fresh route"}</button>}
+              {quote?.routes.some((route) => route.executionMode === "SWAP") && <button type="button" disabled={preflightLoading} onClick={runPreflight} className="button button-outline">{preflightLoading ? "Checking transaction…" : "Check transaction · no wallet charge"}</button>}
+              {quote?.routes.some((route) => route.executionMode === "SWAP") && <p className="transaction-cost-note">Getting routes and checking a transaction do not spend wallet funds. Only a wallet-confirmed approval or swap submits a BSC transaction. An approval uses BNB gas; a buy spends the shown USDT input plus BNB gas. A failed on-chain transaction can still cost gas.</p>}
               {preflightError && <p className="message message-error">{preflightError}</p>}
               {preflightResult && <PreflightPanel result={preflightResult} canSign={!!connectedWallet && connectedWallet.toLowerCase() === walletAddress.trim().toLowerCase()} busy={executionBusy} nowMs={viewNowMs} onApprove={approveExactAmount} onSwap={executeSwap} />}
               {executionStatus && <p className="message execution-message" aria-live="polite">{executionStatus} {evidenceHistory.length > 0 && <a href="#evidence">View evidence ↓</a>}</p>}
@@ -687,7 +702,7 @@ export function BellproofDashboard() {
             </div>
           </div>
           </div>
-          {evidenceHistory.length > 0 && <div id="evidence" className="evidence-journal"><div className="subsection-header"><div><span className="section-kicker">RECORD</span><h4>Decision evidence</h4></div><span className="read-only-pill">THIS BROWSER</span></div><p className="subsection-description">Recent records stay in this browser. Open or download a record to inspect its preflight, transaction hash, receipt, and balance delta.</p>{evidenceHistory.map((record) => <details key={record.id} className="preflight-detail"><summary>{record.status} · {record.preflight.decision.action} · {formatTime(record.createdAtMs)} {record.swapHash ? `· ${record.swapHash.slice(0, 10)}…` : ""}</summary>{record.swapHash && <p className="result-meta"><a href={`https://bscscan.com/tx/${record.swapHash}`} target="_blank" rel="noreferrer">View BSC transaction ↗</a></p>}<pre><code>{JSON.stringify(record, null, 2)}</code></pre></details>)}</div>}
+          {evidenceHistory.length > 0 && <div id="evidence" className="evidence-journal"><div className="subsection-header"><div><span className="section-kicker">RECORD</span><h4>Decision evidence</h4></div><span className="read-only-pill">THIS BROWSER</span></div><p className="subsection-description">Each record shows the decision and any confirmed wallet action. The full JSON is available for technical review.</p>{evidenceHistory.map((record) => <details key={record.id} className="preflight-detail"><summary>{record.status} · {record.preflight.decision.action} · {formatTime(record.createdAtMs)} {record.swapHash ? `· ${record.swapHash.slice(0, 10)}…` : ""}</summary><div className="evidence-summary"><p><strong>Decision:</strong> {record.preflight.decision.action} · {record.preflight.decision.reason.replaceAll("_", " ")}</p><p><strong>Session:</strong> {record.preflight.market.session}</p>{record.preflight.quote && <p><strong>Planned input:</strong> {formatTokenAmount(record.preflight.quote.amountIn, 18)} USDT</p>}{record.approvalHash && <p><strong>Approval:</strong> <a href={`https://bscscan.com/tx/${record.approvalHash}`} target="_blank" rel="noreferrer">View on BscScan ↗</a></p>}{record.swapHash && <p><strong>Swap:</strong> <a href={`https://bscscan.com/tx/${record.swapHash}`} target="_blank" rel="noreferrer">View on BscScan ↗</a></p>}{record.before && record.after && <p><strong>Balance change:</strong> {formatTokenAmount(record.before.usdt, 18)} → {formatTokenAmount(record.after.usdt, 18)} USDT; {record.preflight.quote ? `${formatTokenAmount(record.before.stock, record.preflight.quote.outputDecimals)} → ${formatTokenAmount(record.after.stock, record.preflight.quote.outputDecimals)} ${record.preflight.quote.outputSymbol}` : "stock token balance recorded"}</p>}</div><details className="preflight-detail"><summary>Full technical JSON</summary><pre><code>{JSON.stringify(record, null, 2)}</code></pre></details><button type="button" className="button button-quiet" onClick={() => downloadJson(`bellproof-decision-${record.id}.json`, record)}>Export record JSON</button></details>)}</div>}
         </section>}
 
         {workspaceView === "lab" && <section id="policy" className="workspace-panel policy-panel" aria-labelledby="policy-heading">
