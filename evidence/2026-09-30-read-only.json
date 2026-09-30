@@ -1,0 +1,41 @@
+{
+  "kind": "read-only-live-api-observation",
+  "dateUtc": "2026-09-30",
+  "wallet": "unfunded diagnostic address",
+  "chainId": "56",
+  "transactionsSignedOrBroadcast": 0,
+  "observations": [
+    {
+      "ticker": "NVDA",
+      "platform": "ondo",
+      "tokenSymbol": "NVDAon",
+      "marketSession": "premarket",
+      "restrictionReason": "TRADING",
+      "routeVendor": "LiquidMesh",
+      "executionMode": "SWAP",
+      "inputUsdtBaseUnits": "10000000000000000000",
+      "decision": "WAIT",
+      "reason": "EXTENDED_HOURS_OPT_OUT",
+      "approvalSimulation": "SUCCESS",
+      "swapSimulation": "FAILED",
+      "swapFailReason": "execution reverted: BEP20: transfer amount exceeds balance",
+      "signingEnabled": false
+    },
+    {
+      "ticker": "NVDA",
+      "platform": "bstock",
+      "tokenSymbol": "NVDAB",
+      "marketSession": "unknown",
+      "restrictionReason": "TRADING",
+      "routeVendor": "LiquidMesh",
+      "executionMode": "SWAP",
+      "inputUsdtBaseUnits": "5000000000000000000",
+      "decision": "BLOCK",
+      "reason": "UNKNOWN_MARKET_STATE",
+      "approvalSimulation": "SUCCESS",
+      "swapSimulation": "FAILED",
+      "swapFailReason": "execution reverted: BEP20: transfer amount exceeds balance",
+      "signingEnabled": false
+    }
+  ]
+}

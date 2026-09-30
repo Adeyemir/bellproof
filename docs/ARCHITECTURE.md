@@ -1,6 +1,6 @@
 # Bellproof architecture
 
-**Status:** implementation plan, updated 30 September 2026. The dashboard, signed client, market and issuer-profile lookup, wallet-balance proposal, route preview, read-only transaction preflight, and pure policy engine exist. Live Binance calls returned BSC NVDAon and NVDAB `SWAP` quotes and unsigned swap calldata. Approval and swap simulations were called from an unfunded diagnostic address; approval succeeded and swap failed for insufficient balance. Durable persistence and execution remain planned. The development network's default DNS still fails; an opt-in resolver setting enabled the verified calls.
+**Status:** implementation plan, updated 30 September 2026. The dashboard, signed client, RWA discovery, wallet basket proposal, exact preflight, live BSC balance and allowance reads, owner-signed `SWAP` code, and browser evidence journal exist. Live Binance calls returned NVDAon and NVDAB `SWAP` quotes and unsigned calldata. An unfunded diagnostic address produced approval simulation success and swap failure for insufficient balance; signing remained disabled. No funded signature or settlement has been observed. Server persistence, scheduling, Agentic Wallet, and sell/RFQ execution remain planned. The development network's default DNS still fails; an opt-in resolver setting enabled the verified calls.
 
 ## Design rule
 
@@ -55,7 +55,7 @@ observe wallet and target weights
   -> append immutable decision/result record
 ```
 
-The order matters. A quote is not an authorization. Simulation is not settlement. Every state change is saved with timestamps so the judge can see where a decision stopped.
+The order matters. A quote is not an authorization. Simulation is not settlement. The current implementation records recent decisions in browser local storage; the database and shareable read-only decision URL shown in the diagram are planned.
 
 The Agentic Wallet path is a separate adapter: use its BSC quote, swap, and order-status flow only after checking the same policy and its Binance App security rules. Its returned `orderId` means submission, not completion; poll until a final state and record the actual transaction hash and balances. This path must not be presented as the same RFQ EIP-712 flow until a live stock route proves it. [Agentic Wallet stock-trading guide](https://developers.binance.com/en/docs/products/agentic-wallet/use-cases/trading/stock-trading), [market-order reference](https://github.com/binance/binance-skills-hub/blob/main/skills/binance-web3/binance-agentic-wallet/references/market-order.md).
 
@@ -78,7 +78,7 @@ References: [RWA](https://web3.binance.com/en/dev-docs/catalog/web3-wallet/api/r
 
 1. **Credentials:** Binance API key and secret stay on the server. Sign `timestamp + METHOD + /build/path?query + rawBody` using HMAC-SHA256, Base64 encoded. Never expose credentials in browser bundles, logs, or public decision records. [Binance authentication](https://web3.binance.com/en/dev-docs/authentication).
 2. **No private-key custody in P0:** the user signs exact approval and `SWAP` transactions in their wallet, or an EIP-712 order if a future route is `RFQ`. The server prepares and checks but cannot sign for the user.
-3. **Allowlist and limits:** chain `56`, recognized token addresses, approved router/spender, exact or bounded ERC-20 approval, trade size, daily budget, slippage, quote impact, and cooldown are checked before and immediately before signing.
+3. **Live buy checks:** chain `56`, recognized token address, quote-matched router/spender, exact ERC-20 approval, USDT and gas balance, basket proposal, regular session, $10 per-trade size, 0.5% slippage, 50 bps quote impact, and fresh transaction simulation are checked. Daily budget and cooldown are implemented in the sample policy engine but are not yet live execution controls.
 4. **Fail closed:** unknown status, stale RWA data, stale quote, no route, failed approval simulation, unexpected approval target, or disagreement between the displayed quote and typed order causes `BLOCK` or `WAIT`.
 5. **No AI authority:** a model may explain a decision from structured facts. It cannot choose an unapproved token, edit a cap, sign, or call execution directly.
 6. **Autonomous P1:** only add Binance Agentic Wallet after verifying the team's account setup, token scope, daily limits, and approval flow. Its security rules are configured in the Binance App, according to [its documentation](https://developers.binance.com/en/docs/products/agentic-wallet/quickstart/install-agentic-wallet).

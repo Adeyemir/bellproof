@@ -2,9 +2,9 @@
 
 **A policy-controlled execution agent for tokenized stocks on BNB Smart Chain.**
 
-Bellproof keeps a user-defined stock-token basket within policy. It proposes a rebalance from wallet holdings, checks whether the trade is actually executable, and records why it traded, waited, or blocked. The execution and decision-journal stages are still being built.
+Bellproof keeps a user-defined stock-token basket within policy. It proposes a rebalance from wallet holdings, checks whether a buy can execute, and records why it traded, waited, or blocked. The owner-signed buy path is implemented but has not yet completed a funded mainnet trade.
 
-> Working name and prototype, 30 September 2026. Signed RWA discovery, live BSC stock quotes, unsigned swap construction, and read-only Transaction API simulation have been verified. Wallet signing and a mainnet trade remain open. The name is not a claim of domain or trademark availability.
+> Working name and prototype, 30 September 2026. Signed RWA discovery, live BSC stock quotes, unsigned swap construction, and Transaction API simulation have been verified. The connected-wallet signing path compiles and has mocked boundary tests; a real wallet signature and mainnet trade remain open. The name is not a claim of domain or trademark availability.
 
 ## Why build this
 
@@ -17,7 +17,7 @@ Bellproof's proposed edge is **a narrow rebalance job with a hard execution poli
 - **Track:** Tokenized Stocks Products & Agents.
 - **Chain:** BSC mainnet, chain ID `56`; spot only.
 - **Core assets:** bStocks or Ondo tokenized stocks. Compare both only when the same underlying ticker is actually available and executable on BSC.
-- **Required stack:** Binance Web3 API. The current server paths use RWA Data, Wallet, and Trading APIs; Transaction API belongs in the approval-simulation stage. Binance Agentic Wallet is the candidate bounded execution adapter.
+- **Required stack:** Binance Web3 API. The current server paths use RWA Data, Wallet, Trading, and Transaction APIs. Binance Agentic Wallet is a candidate bounded execution adapter, not yet integrated.
 - **Deliverables:** working app, public repository, deployed link or judge-ready instructions, and a firsthand Developer Experience Report. A video of at most four minutes is strongly recommended.
 - **Deadline:** 11 October 2026, 12:00 UTC (13:00 Lagos).
 
@@ -25,13 +25,15 @@ Source: [BNB Hack: Tokenized Stocks Edition](https://www.bnbchain.org/en/hackath
 
 ## The first judge-ready flow
 
-1. The job is “keep this basket within my policy.” A user sets a stock target, drift threshold, allowed sessions, and trade limits.
+1. The job is “keep this basket within my policy.” The current live buy path takes a stock target and a $10 per-trade ceiling, with a fixed 3% drift trigger, regular-session-only rule, 0.5% slippage, and 50 bps impact ceiling. The policy lab shows additional sample rules; those are not all live controls yet.
 2. The agent observes BSC wallet balances and the actual bStocks/Ondo token, then proposes `BUY`, `SELL`, or `HOLD` from allocation drift. It cannot grant itself execution permission.
-3. Bellproof checks the underlying session and issuer restriction, fetches a fresh executable quote for the proposed side and size, and applies deterministic limits. The outcome is `TRADE`, `WAIT`, or `BLOCK` with a reason code.
-4. The execution layer follows the live route's mode. The observed NVDAon and NVDAB routes are `SWAP`: build unsigned calldata from a fresh quote, validate its sender, target, tokens, amount, and slippage, then simulate approval and swap transactions before asking for wallet signatures. If a later route is `RFQ`, validate its EIP-712 order instead. A bounded Binance Agentic Wallet route must pass the same policy gate.
-5. Bellproof checks order status and settled balances before recording a completed trade. A submitted order is not recorded as a settled trade.
+3. Bellproof checks the underlying session and issuer restriction, fetches a fresh buy quote, reads actual BSC balances and allowance, and applies deterministic limits. The outcome is `TRADE`, `WAIT`, or `BLOCK` with a reason code.
+4. The observed NVDAon and NVDAB routes are `SWAP`: Bellproof validates sender, target, tokens, amount, spender, and slippage in Binance's unsigned build, then simulates the exact approval and swap. When approval is needed, it signs that transaction first and re-quotes and re-simulates after confirmation. It asks the wallet to sign the swap only after a fresh `TRADE` result.
+5. The app checks the BSC receipt and USDT/stock-token balance delta before marking a trade `SETTLED`. Recent decision records persist in the current browser. There is no server database or autonomous execution yet.
 
 See [PRD](docs/PRD.md), [architecture](docs/ARCHITECTURE.md), [competition plan](docs/WIN_PLAN.md), [implementation backlog](docs/BUILD_BACKLOG.md), [Agentic Wallet feasibility gate](docs/AGENTIC_WALLET_GATE.md), and the [firsthand developer log template](docs/DX_LOG.md).
+
+The [read-only live API evidence](evidence/2026-09-30-read-only.json) contains the observed Ondo `WAIT` and bStocks `BLOCK` cases. It is explicitly not a settled-trade record.
 
 ## Scope boundaries
 
@@ -54,8 +56,8 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`. Ticker lookup, wallet-balance proposal, and route preview call the Binance Web3 API from the server. The policy lab uses labelled sample inputs and sends no transaction. Run `npm run probe:binance-route` for read-only live discovery, session, quote, and unsigned-build checks; set `BINANCE_PROBE_DNS_SERVER=1.1.1.1` for that command if the local resolver is broken. Run `npm test`, `npm run lint`, and `npm run build` from `apps/web` to verify the code.
+Open `http://localhost:3000`. Ticker lookup, wallet-balance proposal, route preview, and preflight call Binance from the server. To inspect without spending, enter any BSC address and run preflight. To try the owner-signed path, connect an injected EVM wallet on BSC mainnet with USDT and BNB, select a supported stock and target weight, request a route, then run preflight. Approval and swap each require an explicit wallet prompt. Only sign if you recognize the exact spender, amount, and transaction. The policy lab uses labelled sample inputs. Run `npm run probe:binance-route` for read-only live discovery, session, quote, and unsigned-build checks; set `BINANCE_PROBE_DNS_SERVER=1.1.1.1` for that command if the local resolver is broken. Run `npm test`, `npm run lint`, and `npm run build` from `apps/web` to verify the code.
 
 ## Current status
 
-The dashboard, signed API client, BSC RWA discovery with issuer profile and attestation links, read-only wallet-balance proposal, route preview, transaction preflight, and deterministic session policy are implemented. On 30 September, the app returned live NVDAon and NVDAB `SWAP` quotes and built unsigned transactions for both. A read-only preflight validated exact approval and swap fields, then called the Binance Transaction API: an unfunded diagnostic wallet produced approval simulation `SUCCESS` and swap simulation `FAILED` for insufficient token balance. The current network resolver still returns `NXDOMAIN` for Binance; the opt-in development DNS setting makes local API calls work. Wallet signing, settlement verification, a live-policy `TRADE` decision, and a durable decision journal remain to be built. No API keys or wallet secrets belong in this repository.
+The dashboard, signed API client, RWA discovery, wallet-balance proposal, quote preview, exact swap preflight, connected-wallet boundary, and browser evidence journal are implemented. On 30 September, the app returned live NVDAon and NVDAB `SWAP` quotes and built unsigned transactions. The Transaction API returned approval simulation `SUCCESS` and swap simulation `FAILED` for an unfunded diagnostic wallet. The live policy read 0 USDT, 0 allowance, and 0 BNB from BSC RPC and kept signing disabled. The owner-signed approval/swap and settlement-verification code has not been exercised with a funded wallet; no live `TRADE` or `SETTLED` record exists. The current network resolver still returns `NXDOMAIN` for Binance; the opt-in development DNS setting works locally. Agentic Wallet, server-side decision persistence, a scheduler, sell/RFQ execution, deployment, and a live mainnet trade remain open. No API keys or wallet secrets belong in this repository.

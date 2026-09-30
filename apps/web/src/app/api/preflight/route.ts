@@ -15,6 +15,10 @@ import {
   type RawQuote,
 } from "@/lib/binance/quote-data";
 import { validateSwapBuild, type RawSwapBuild, type UnsignedEvmTransaction } from "@/lib/binance/swap-preflight";
+import { basketValuesFromWallet, type WalletBalanceGroup } from "@/lib/binance/portfolio-data";
+import { proposeRebalance } from "@/lib/agent/proposal";
+import { readBscWalletState } from "@/lib/bsc-rpc";
+import { evaluateLiveBuy } from "@/lib/live-buy-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +65,7 @@ export async function POST(request: NextRequest) {
   const targetAddress = typeof payload.targetAddress === "string" ? payload.targetAddress : "";
   const walletAddress = typeof payload.walletAddress === "string" ? payload.walletAddress : "";
   const amountCents = payload.amountCents;
+  const targetStockWeightBps = payload.targetStockWeightBps;
   if (
     !/^[A-Z0-9.]{1,10}$/.test(ticker) ||
     !evmAddressPattern.test(targetAddress) ||
@@ -68,7 +73,11 @@ export async function POST(request: NextRequest) {
     typeof amountCents !== "number" ||
     !Number.isSafeInteger(amountCents) ||
     amountCents < 1 ||
-    amountCents > 1_000
+    amountCents > 1_000 ||
+    typeof targetStockWeightBps !== "number" ||
+    !Number.isSafeInteger(targetStockWeightBps) ||
+    targetStockWeightBps < 0 ||
+    targetStockWeightBps > 10_000
   ) {
     return NextResponse.json({ error: "Enter a BSC stock, wallet address, and amount from $0.01 to $10.00." }, { status: 400 });
   }
@@ -91,6 +100,7 @@ export async function POST(request: NextRequest) {
         decision: { action: "BLOCK", reason: "ASSET_RESTRICTED" },
         market: { session: asset.session, restrictionReason: asset.restrictionReason, observedAtMs: market.observedAtMs },
         signingEnabled: false,
+        approvalAllowed: false,
       }, { status: 200, headers: { "Cache-Control": "no-store" } });
     }
 
@@ -111,6 +121,7 @@ export async function POST(request: NextRequest) {
         decision: { action: "WAIT", reason: "NO_SUPPORTED_SWAP_ROUTE" },
         market: { session: asset.session, restrictionReason: asset.restrictionReason, observedAtMs: market.observedAtMs },
         signingEnabled: false,
+        approvalAllowed: false,
       }, { status: 200, headers: { "Cache-Control": "no-store" } });
     }
 
@@ -139,30 +150,43 @@ export async function POST(request: NextRequest) {
 
     // These calls do not change chain state. The swap simulation observes the current
     // allowance, even when the approval simulation predicts success.
-    const approvalSimulation = await simulate(validated.approval);
-    const swapSimulation = await simulate(validated.swap);
-
-    let action: "WAIT" | "BLOCK" = "WAIT";
-    let reason = "LIVE_POLICY_AND_WALLET_CHECK_REQUIRED";
-    if (asset.session === "unknown") {
-      action = "BLOCK";
-      reason = "UNKNOWN_MARKET_STATE";
-    } else if (asset.session === "closed") {
-      reason = "CLOSED_HOURS_OPT_OUT";
-    } else if (asset.session !== "regular") {
-      reason = "EXTENDED_HOURS_OPT_OUT";
-    } else if (Date.now() >= estimatedExpiryMs) {
-      reason = "QUOTE_EXPIRED";
-    } else if (quote.priceImpactBps === null || Math.abs(quote.priceImpactBps) > 50) {
-      reason = "QUOTE_QUALITY_NOT_WITHIN_POLICY";
-    } else if (approvalSimulation.status !== "SUCCESS" || swapSimulation.status !== "SUCCESS") {
-      action = "BLOCK";
-      reason = "PREFLIGHT_FAILED";
-    }
+    const [approvalSimulation, swapSimulation, wallet, balanceGroups] = await Promise.all([
+      simulate(validated.approval),
+      simulate(validated.swap),
+      readBscWalletState(walletAddress, validated.spender),
+      postBinance<WalletBalanceGroup[]>("/api/v1/dex/balance/token-balances-by-address", {
+        address: walletAddress,
+        tokenContractAddresses: [asset.tokenContractAddress, bscUsdtAddress].map((tokenContractAddress) => ({
+          binanceChainId: "56", tokenContractAddress,
+        })),
+        excludeRiskToken: "1",
+      }),
+    ]);
+    const basket = basketValuesFromWallet(balanceGroups, asset.tokenContractAddress);
+    const proposal = proposeRebalance({ ...basket, targetStockWeightBps, driftThresholdBps: 300 });
+    const decision = evaluateLiveBuy({
+      nowMs: Date.now(),
+      market: {
+        session: asset.session,
+        openState: asset.openState,
+        restrictionReason: asset.restrictionReason,
+        observedAtMs: market.observedAtMs,
+      },
+      proposal,
+      amountCents,
+      amountIn: validated.amountIn,
+      quote: { estimatedExpiryMs, priceImpactBps: quote.priceImpactBps, slippagePercent: validated.slippagePercent },
+      wallet,
+      swapGas: validated.swap.gas!,
+      swapGasPrice: validated.swap.gasPrice!,
+      approvalSimulation,
+      swapSimulation,
+    });
 
     return NextResponse.json({
-      decision: { action, reason },
-      signingEnabled: false,
+      decision: { action: decision.action, reason: decision.reason },
+      signingEnabled: decision.signingEnabled,
+      approvalAllowed: decision.approvalAllowed,
       market: {
         session: asset.session,
         restrictionReason: asset.restrictionReason,
@@ -191,6 +215,8 @@ export async function POST(request: NextRequest) {
         nonceSource: validated.swap.nonce === null ? "not supplied by Binance" : "Binance swap build",
       },
       simulations: { approval: approvalSimulation, swap: swapSimulation },
+      wallet,
+      basket: { ...basket, proposal },
       simulationNote: "Each simulation reads current chain state. A successful approval simulation does not grant allowance for the separate swap simulation.",
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

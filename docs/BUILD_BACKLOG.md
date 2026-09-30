@@ -28,7 +28,7 @@ This is the build order for the 11 October submission. Each ticket has a visible
 | --- | --- | --- | ---: |
 | B08 | Build a `SWAP` transaction from a fresh quote and an exact-amount approval if needed; verify chain, sender, token pair, recipient/router, spender, amount, minimum output, slippage, and expiry. The live build and field validation are implemented; wallet signing remains. | Displayed transaction and approval fields match what the wallet signs. | 6–10 h |
 | B09 | Simulate approval and swap transactions with the Binance Transaction API before signing. The read-only calls are implemented and an unfunded-address failure was observed; repeat with the intended funded wallet and current allowance. | Failed simulation or transaction-field mismatch blocks signing and appears in the decision record. | 4–6 h |
-| B10 | Connect a BSC wallet for owner-signed P0 `SWAP` execution; verify receipt, settlement transaction, and balance change. Add an RFQ adapter only if a live route returns that mode. | One small spot mainnet trade links to its pre-trade decision and settlement evidence. | 8–12 h plus wallet funding |
+| B10 | Connect a BSC wallet for owner-signed P0 `SWAP` execution; verify receipt, settlement transaction, and balance change. The signing and browser journal code now exists but is untested with a funded wallet. Add an RFQ adapter only if a live route returns that mode. | One small spot mainnet trade links to its pre-trade decision and settlement evidence. | Wallet funding and live verification remain |
 | B11 | Add scheduler idempotency and a final status/quote/cap check before execution. | Retry cannot duplicate a trade; session change, expired quote, or pause blocks execution. | 5–8 h |
 
 ## Gate 3: differentiation and submission

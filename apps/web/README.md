@@ -1,6 +1,6 @@
 # Bellproof web prototype
 
-The app implements a signed Binance Web3 API client, BSC bStocks/Ondo ticker and session lookup, a wallet-specific route preview, read-only approval and swap simulation, a wallet-balance rebalance proposal, and a deterministic policy lab. Live RWA discovery, `SWAP` quotes, unsigned builds, and Transaction API simulation were verified on 30 September 2026. See the [repository README](../../README.md) for the product plan and setup.
+The app implements a signed Binance Web3 API client, BSC bStocks/Ondo discovery, wallet basket proposals, exact approval and swap preflight, a regular-session buy policy, an injected-wallet signing path, and a browser evidence journal. Live RWA discovery, `SWAP` quotes, unsigned builds, Transaction API simulation, and BSC wallet reads were verified on 30 September 2026. A funded mainnet signature and settlement remain unverified. See the [repository README](../../README.md) for the product plan and setup.
 
 ## Local commands
 
@@ -19,6 +19,6 @@ npm run lint
 npm run build
 ```
 
-Portfolio proposals, route previews, and preflight simulations do not sign, submit, or broadcast an order. A proposal is not a `TRADE` decision until a fresh quote, funded wallet state, simulations, and policy gates pass. The observed equity routes use `SWAP`; Bellproof now validates the exact approval and swap fields and simulates both against current chain state. The two simulations do not share state: a successful approval simulation does not grant allowance to the swap simulation. An `RFQ` route, if observed later, needs typed-order validation and status tracking instead.
+Portfolio proposals, route previews, and preflight simulations are read-only. An injected EVM wallet can be connected for an explicit approval and swap signature when a fresh live policy result allows it. Bellproof reads BSC USDT, BNB, and allowance from RPC, checks the wallet basket proposal and quote, and simulates both transactions. A successful approval simulation does not grant allowance to the separate swap simulation, so an actual approval must confirm before a fresh swap preflight can return `TRADE`. The signing code is not yet verified with a funded wallet. A submitted swap becomes `SETTLED` only after a successful receipt and verified balance delta; recent records are stored in that browser's local storage. An `RFQ` route, if observed later, needs separate typed-order validation and status tracking.
 
 If the UI cannot reach Binance, run `npm run smoke:binance` from a Terminal with normal internet access. It makes one signed NVDA search and prints status, latency, and public token metadata without printing credentials.
