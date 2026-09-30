@@ -46,6 +46,8 @@ Sources: [RWA Data API](https://web3.binance.com/en/dev-docs/catalog/web3-wallet
 
 ## Run the prototype
 
+Live demo: [Bellproof on Vercel](https://bellproof-jokanola-ridwan-adeyemis-projects.vercel.app/). The production API runs in Vercel's Singapore region; live NVDA discovery returned both Ondo and bStocks candidates on 30 September 2026.
+
 ```bash
 cd apps/web
 npm install
@@ -60,4 +62,4 @@ Open `http://localhost:3000`. Ticker lookup, wallet-balance proposal, route prev
 
 ## Current status
 
-The dashboard, signed API client, RWA discovery, wallet-balance proposal, quote preview, exact swap preflight, connected-wallet boundary, and browser evidence journal are implemented. On 30 September, the app returned live NVDAon and NVDAB `SWAP` quotes and built unsigned transactions. The Transaction API returned approval simulation `SUCCESS` and swap simulation `FAILED` for an unfunded diagnostic wallet. The live policy read 0 USDT, 0 allowance, and 0 BNB from BSC RPC and kept signing disabled. The owner-signed approval/swap and settlement-verification code has not been exercised with a funded wallet; no live `TRADE` or `SETTLED` record exists. The current network resolver still returns `NXDOMAIN` for Binance; the opt-in development DNS setting works locally. Agentic Wallet, server-side decision persistence, a scheduler, sell/RFQ execution, deployment, and a live mainnet trade remain open. No API keys or wallet secrets belong in this repository.
+The dashboard, signed API client, RWA discovery, wallet-balance proposal, quote preview, exact swap preflight, connected-wallet boundary, browser evidence journal, and public deployment are implemented. On 30 September, the app returned live NVDAon and NVDAB `SWAP` quotes and built unsigned transactions. The Transaction API returned approval simulation `SUCCESS` and swap simulation `FAILED` for an unfunded diagnostic wallet. The live policy read 0 USDT, 0 allowance, and 0 BNB from BSC RPC and kept signing disabled. The owner-signed approval/swap and settlement-verification code has not been exercised with a funded wallet; no live `TRADE` or `SETTLED` record exists. The current local network resolver still returns `NXDOMAIN` for Binance; the opt-in development DNS setting works locally. Agentic Wallet, server-side decision persistence, a scheduler, sell/RFQ execution, and a live mainnet trade remain open. No API keys or wallet secrets belong in this repository.
