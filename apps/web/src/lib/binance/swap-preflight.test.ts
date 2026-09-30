@@ -61,4 +61,11 @@ describe("exact stock swap preflight", () => {
       routerResult: { ...build.routerResult, toToken: { tokenContractAddress: wallet } },
     }, quote, wallet, stock, "0.5")).toThrow("does not match");
   });
+
+  it("rejects a transaction whose minimum output permits more than the quoted slippage", () => {
+    expect(() => validateSwapBuild({
+      ...build,
+      tx: { ...build.tx, minReceiveAmount: "43434224234775559" },
+    }, quote, wallet, stock, "0.5")).toThrow("allowed slippage");
+  });
 });

@@ -61,6 +61,14 @@ function assertInteger(value: string | undefined, label: string, allowZero = fal
   return value;
 }
 
+function slippageBasisPoints(percent: string): bigint {
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(percent);
+  if (!match) throw new Error("Invalid slippage limit");
+  const basisPoints = BigInt(match[1]) * 100n + BigInt((match[2] ?? "").padEnd(2, "0") || "0");
+  if (basisPoints > 10_000n) throw new Error("Invalid slippage limit");
+  return basisPoints;
+}
+
 export function expectedApprovalCalldata(spender: string, amount: string): string {
   if (!evmAddressPattern.test(spender) || !integerPattern.test(amount) || BigInt(amount) <= 0n) {
     throw new Error("Invalid approval spender or amount");
@@ -112,6 +120,10 @@ export function validateSwapBuild(
   const minReceiveAmount = assertInteger(tx.minReceiveAmount, "minimum receive amount");
   if (BigInt(minReceiveAmount) > BigInt(quote.outputAmount)) {
     throw new Error("Minimum receive exceeds the quoted output");
+  }
+  const lowestAllowedOutput = BigInt(quote.outputAmount) * (10_000n - slippageBasisPoints(slippagePercent)) / 10_000n;
+  if (BigInt(minReceiveAmount) < lowestAllowedOutput) {
+    throw new Error("Minimum receive exceeds the allowed slippage");
   }
   if (tx.nonce !== undefined) assertInteger(tx.nonce, "nonce", true);
 

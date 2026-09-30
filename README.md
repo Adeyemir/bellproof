@@ -31,7 +31,7 @@ Source: [BNB Hack: Tokenized Stocks Edition](https://www.bnbchain.org/en/hackath
 4. The observed NVDAon and NVDAB routes are `SWAP`: Bellproof validates sender, target, tokens, amount, spender, and slippage in Binance's unsigned build, then simulates the exact approval and swap. When approval is needed, it signs that transaction first and re-quotes and re-simulates after confirmation. It asks the wallet to sign the swap only after a fresh `TRADE` result.
 5. The app checks the BSC receipt and USDT/stock-token balance delta before marking a trade `SETTLED`. Recent decision records persist in the current browser. There is no server database or autonomous execution yet.
 
-See [PRD](docs/PRD.md), [architecture](docs/ARCHITECTURE.md), [competition plan](docs/WIN_PLAN.md), [implementation backlog](docs/BUILD_BACKLOG.md), [Agentic Wallet feasibility gate](docs/AGENTIC_WALLET_GATE.md), and the [firsthand developer log template](docs/DX_LOG.md).
+See [PRD](docs/PRD.md), [architecture](docs/ARCHITECTURE.md), [competition plan](docs/WIN_PLAN.md), [implementation backlog](docs/BUILD_BACKLOG.md), [live demo runbook](docs/DEMO_RUNBOOK.md), [Agentic Wallet feasibility gate](docs/AGENTIC_WALLET_GATE.md), and the [firsthand developer log template](docs/DX_LOG.md).
 
 The [read-only live API evidence](evidence/2026-09-30-read-only.json) contains the observed Ondo `WAIT` and bStocks `BLOCK` cases. It is explicitly not a settled-trade record.
 
