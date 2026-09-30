@@ -19,6 +19,8 @@ This is the next verification gate, not a record of a completed trade. The publi
 
 ## Submission evidence
 
+Use the [spoken demo script](DEMO_SCRIPT.md) for the final screen recording. Its settlement lines are conditional on a real confirmed trade.
+
 - Capture one live `WAIT` and one `BLOCK`, with raw session/reason visible.
 - Capture one `TRADE` only after all checks pass, then the signed transaction, receipt, balance delta, and downloaded evidence record.
 - Record quote size, route vendor, session, latency, approval behavior, any error code, and transaction hash in the firsthand [DX log](DX_LOG.md).

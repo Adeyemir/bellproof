@@ -38,14 +38,9 @@ These are prioritization scores based on the published criteria and implementati
 4. **No independent traditional-market price feed:** remove all premium/arbitrage language. Document the Binance `referencePrice` limitation as a documentation finding unless also verified in a live response.
 5. **Any live quote exceeds user limits:** show the wait decision. Do not loosen limits merely to produce a demo trade.
 
-## Four-minute demo outline
+## Four-minute demo
 
-1. **0:00–0:25 — Problem:** show the closed underlying session beside an active on-chain market. State why a naive scheduled rebalance can be costly.
-2. **0:25–1:05 — Policy:** set a basket and clear per-trade, session, and slippage limits.
-3. **1:05–1:50 — Live observation:** show current status, token contract/issuer, quote, and a `WAIT` or `BLOCK` reason. Label any historical case.
-4. **1:50–2:55 — Execution:** show a fresh `SWAP` quote, route-specific simulation, wallet signature, BSC settlement hash, and verified balance change.
-5. **2:55–3:35 — Audit:** open the decision record and its rejected alternatives; show that the trade and no-trade decisions are inspectable.
-6. **3:35–4:00 — DX finding:** present one real API pitfall, its exact endpoint, and a proposed documentation fix.
+The [spoken demo script](DEMO_SCRIPT.md) is the recording plan. It names the current UI controls, provides the words to say, labels sample versus live decisions, and leaves the settled-trade lines conditional on real receipt and balance evidence.
 
 ## DX report plan
 
