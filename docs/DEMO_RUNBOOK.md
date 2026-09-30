@@ -4,10 +4,11 @@ This is the next verification gate, not a record of a completed trade. The publi
 
 ## Before the market opens
 
-1. Use a browser with an injected EVM wallet. Select BSC mainnet, chain ID `56`.
-2. In that wallet, hold BSC USDT at `0x55d398326f99059fF775485246999027B3197955` and enough BNB for approval and swap gas. The observed NVDAon route rejected $2 and $5 requests despite a `Minimum order amount is 5 USD` message; plan around a $10 USDT quote and verify the current route before any signature. A little more than $10 USDT leaves room for the basket proposal to cover a $10 buy.
-3. Open Bellproof's **Live execution** workspace, search `NVDA`, and click **Continue with this asset** on Ondo `NVDAon`. Confirm the contract shown by live discovery and the current session. Connect the wallet in the right execution column. Bellproof's live buy policy requires `regular`; a `premarket` result should be `WAIT`. The bStocks `unknown` session should be `BLOCK`.
-4. Set **USDT quote size** to `10` and **stock target** to `100%` for this tiny first-basket test. The app caps the submitted amount at $10. The target makes a buy proposal possible for a wallet holding mostly USDT; it does not cause an automatic trade. Return to a realistic basket target after the verification run.
+1. Use a browser with an injected EVM wallet. Select BSC mainnet, chain ID `56`. Before adding funds, connect to Bellproof, click **Disconnect from Bellproof**, and confirm the address, route, preflight, and signing controls clear. This disconnect clears Bellproof's local session; wallet-site permission and any earlier on-chain token approval must be revoked separately in the wallet/on-chain.
+2. Reconnect, switch accounts or networks in the wallet, and confirm Bellproof invalidates the connected state. Return to the intended BSC account. An unfunded address should show `HOLD / NO PORTFOLIO VALUE`; that is expected. The app's route and transaction checks should not open a signing prompt.
+3. Only after those checks, fund that wallet with BSC USDT at `0x55d398326f99059fF775485246999027B3197955` and enough BNB for approval and swap gas. The observed NVDAon route rejected $2 and $5 requests despite a `Minimum order amount is 5 USD` message; plan around a $10 USDT quote and verify the current route before any signature. A little more than $10 USDT leaves room for the basket proposal to cover a $10 buy.
+4. Open Bellproof's **Live execution** workspace, search `NVDA`, and click **Continue with this asset** on Ondo `NVDAon`. Confirm the contract shown by live discovery and the current session. Connect the wallet in the right execution column. Bellproof's live buy policy requires `regular`; a `premarket` result should be `WAIT`. The bStocks `unknown` session should be `BLOCK`.
+5. Set **USDT quote size** to `10` and **stock target** to `100%` for this tiny first-basket test. The app caps the submitted amount at $10. The target makes a buy proposal possible for a wallet holding mostly USDT; it does not cause an automatic trade. Return to a realistic basket target after the verification run.
 
 ## When the live session is regular
 

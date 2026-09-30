@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   demoPolicy,
   evaluateDecision,
@@ -264,6 +264,9 @@ export function BellproofDashboard() {
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [walletNotice, setWalletNotice] = useState<string | null>(null);
+  const [walletConnecting, setWalletConnecting] = useState(false);
+  const walletSessionVersion = useRef(0);
   const [executionBusy, setExecutionBusy] = useState(false);
   const [executionStatus, setExecutionStatus] = useState<string | null>(null);
   const [viewNowMs, setViewNowMs] = useState(0);
@@ -289,6 +292,22 @@ export function BellproofDashboard() {
   const [paused, setPaused] = useState(false);
   const [preflight, setPreflight] = useState<"NOT_RUN" | "SUCCESS" | "FAILED">("NOT_RUN");
 
+  const clearWalletSession = useCallback((message: string, isError: boolean) => {
+    walletSessionVersion.current += 1;
+    setConnectedWallet(null);
+    setWalletAddress("");
+    setQuote(null);
+    setQuoteError(null);
+    setPreflightResult(null);
+    setPreflightError(null);
+    setPortfolio(null);
+    setPortfolioError(null);
+    setApprovalHash(null);
+    setExecutionStatus(null);
+    setWalletError(isError ? message : null);
+    setWalletNotice(isError ? null : message);
+  }, []);
+
   useEffect(() => {
     const timer = window.setInterval(() => setViewNowMs(Date.now()), 1_000);
     return () => window.clearInterval(timer);
@@ -296,14 +315,15 @@ export function BellproofDashboard() {
 
   useEffect(() => {
     if (!connectedWallet) return;
-    return watchWalletChanges(() => {
-      setConnectedWallet(null);
-      setWalletError("Wallet account or network changed. Refresh the connection before signing.");
-      setQuote(null);
-      setPreflightResult(null);
-      setApprovalHash(null);
-    });
-  }, [connectedWallet]);
+    const sessionVersion = walletSessionVersion.current;
+    const invalidate = () => {
+      if (sessionVersion === walletSessionVersion.current) clearWalletSession("Wallet account, network, or provider changed. Connect again before signing.", true);
+    };
+    const stopWatching = watchWalletChanges(invalidate);
+    const checkOnFocus = () => { void assertConnectedWallet(connectedWallet).catch(invalidate); };
+    window.addEventListener("focus", checkOnFocus);
+    return () => { stopWatching(); window.removeEventListener("focus", checkOnFocus); };
+  }, [connectedWallet, clearWalletSession]);
 
   function saveEvidence(record: EvidenceRecord) {
     setEvidenceHistory((current) => {
@@ -314,17 +334,26 @@ export function BellproofDashboard() {
   }
 
   async function connectWallet() {
+    setWalletConnecting(true);
     setWalletError(null);
+    setWalletNotice(null);
     try {
       const address = await connectBscWallet();
+      walletSessionVersion.current += 1;
       setConnectedWallet(address);
       setWalletAddress(address);
       setQuote(null);
       setPreflightResult(null);
       setApprovalHash(null);
     } catch (error) {
-      setWalletError(error instanceof Error ? error.message : "Wallet connection failed.");
+      clearWalletSession(error instanceof Error ? error.message : "Wallet connection failed.", true);
+    } finally {
+      setWalletConnecting(false);
     }
+  }
+
+  function disconnectWallet() {
+    clearWalletSession("Disconnected from Bellproof. To revoke this site's account access, remove it in your wallet's connected-sites settings. Any confirmed USDT approval remains on-chain until revoked separately.", false);
   }
 
   const nowMs = Date.parse("2026-09-29T14:30:00Z");
@@ -422,6 +451,7 @@ export function BellproofDashboard() {
   }
 
   async function fetchQuote(candidate: MarketCandidate) {
+    const sessionVersion = walletSessionVersion.current;
     setQuoteLoading(true);
     setQuote(null);
     setQuoteError(null);
@@ -440,13 +470,14 @@ export function BellproofDashboard() {
         }),
       });
       const body: QuoteResponse | { error: string } = await response.json();
+      if (sessionVersion !== walletSessionVersion.current) return;
       if (!response.ok) {
         setQuoteError("error" in body ? body.error : "Quote lookup failed.");
       } else {
         setQuote(body as QuoteResponse);
       }
     } catch {
-      setQuoteError("The quote service could not be reached.");
+      if (sessionVersion === walletSessionVersion.current) setQuoteError("The quote service could not be reached.");
     } finally {
       setQuoteLoading(false);
     }
@@ -454,6 +485,7 @@ export function BellproofDashboard() {
 
   async function requestFreshPreflight(): Promise<PreflightResponse> {
     if (!quote) throw new Error("Get a stock route first.");
+    const sessionVersion = walletSessionVersion.current;
     const response = await fetch("/api/preflight", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -466,12 +498,14 @@ export function BellproofDashboard() {
         }),
       });
     const body: PreflightResponse | { error: string } = await response.json();
+    if (sessionVersion !== walletSessionVersion.current) throw new Error("Wallet session changed during the check. Connect again for signing.");
     if (!response.ok) throw new Error("error" in body ? body.error : "Preflight failed.");
     setPreflightResult(body as PreflightResponse);
     return body as PreflightResponse;
   }
 
   async function runPreflight() {
+    const sessionVersion = walletSessionVersion.current;
     setPreflightLoading(true);
     setPreflightResult(null);
     setPreflightError(null);
@@ -480,7 +514,7 @@ export function BellproofDashboard() {
       saveEvidence({ id: crypto.randomUUID(), createdAtMs: Date.now(), status: "DECIDED", preflight: fresh });
       document.getElementById("live-decision")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
-      setPreflightError(error instanceof Error ? error.message : "The preflight service could not be reached.");
+      if (sessionVersion === walletSessionVersion.current) setPreflightError(error instanceof Error ? error.message : "The preflight service could not be reached.");
     } finally {
       setPreflightLoading(false);
     }
@@ -560,6 +594,7 @@ export function BellproofDashboard() {
   }
 
   async function fetchPortfolio(candidate: MarketCandidate) {
+    const sessionVersion = walletSessionVersion.current;
     setPortfolioLoading(true);
     setPortfolio(null);
     setPortfolioError(null);
@@ -575,13 +610,14 @@ export function BellproofDashboard() {
         }),
       });
       const body: PortfolioResponse | { error: string } = await response.json();
+      if (sessionVersion !== walletSessionVersion.current) return;
       if (!response.ok) {
         setPortfolioError("error" in body ? body.error : "Portfolio lookup failed.");
       } else {
         setPortfolio(body as PortfolioResponse);
       }
     } catch {
-      setPortfolioError("The portfolio service could not be reached.");
+      if (sessionVersion === walletSessionVersion.current) setPortfolioError("The portfolio service could not be reached.");
     } finally {
       setPortfolioLoading(false);
     }
@@ -678,10 +714,11 @@ export function BellproofDashboard() {
               {activeAsset ? <><span>SELECTED TOKEN</span><strong>{activeAsset.tokenSymbol}</strong><small>{activeAsset.platformId.toUpperCase()} · {activeAsset.session} at lookup · {activeAsset.tokenContractAddress.slice(0, 8)}…{activeAsset.tokenContractAddress.slice(-6)}</small></> : <><span>SELECTED TOKEN</span><strong>None yet</strong><small>Choose a stock token from the left.</small></>}
             </div>
             <p className="subsection-description">Connect your wallet for signing, or enter any BSC address for read-only inspection. Bellproof checks the live basket, route, allowance, gas, and simulations before offering a wallet action.</p>
-            <div className="wallet-connection"><button type="button" className="button button-dark" onClick={connectWallet}>{connectedWallet ? "Refresh wallet connection" : "Connect BSC wallet"}</button>{connectedWallet && <span className="wallet-connected">BSC wallet connected · <code>{connectedWallet.slice(0, 6)}…{connectedWallet.slice(-4)}</code></span>}</div>
+            <div className="wallet-connection"><button type="button" className="button button-dark" disabled={walletConnecting || executionBusy} onClick={connectWallet}>{walletConnecting ? "Checking wallet…" : connectedWallet ? "Refresh wallet connection" : "Connect BSC wallet"}</button>{connectedWallet && <><span className="wallet-connected">BSC wallet connected · <code>{connectedWallet.slice(0, 6)}…{connectedWallet.slice(-4)}</code></span><button type="button" className="button button-quiet" disabled={executionBusy} onClick={disconnectWallet}>Disconnect from Bellproof</button></>}</div>
             {walletError && <p className="message message-error">{walletError}</p>}
+            {walletNotice && <p className="message wallet-notice" role="status">{walletNotice}</p>}
             <div className="field-grid wallet-fields">
-              <label className="field"><span>WALLET ADDRESS</span><input value={walletAddress} onChange={(event) => { setWalletAddress(event.target.value); setQuote(null); setPreflightResult(null); setApprovalHash(null); if (event.target.value.toLowerCase() !== connectedWallet?.toLowerCase()) setConnectedWallet(null); }} placeholder="0x…" autoComplete="off" className="text-input mono-input" /></label>
+              <label className="field"><span>WALLET ADDRESS</span><input value={walletAddress} onChange={(event) => { const nextAddress = event.target.value; walletSessionVersion.current += 1; setWalletAddress(nextAddress); setQuote(null); setQuoteError(null); setPreflightResult(null); setPreflightError(null); setPortfolio(null); setPortfolioError(null); setApprovalHash(null); if (connectedWallet && nextAddress.toLowerCase() !== connectedWallet.toLowerCase()) { setConnectedWallet(null); setWalletNotice("Address changed. This is a read-only address until you connect its wallet."); } }} placeholder="0x…" autoComplete="off" className="text-input mono-input" /></label>
               <label className="field"><span>USDT QUOTE SIZE</span><input type="number" min="0.01" max="10" step="0.01" value={quoteAmount} onChange={(event) => { setQuoteAmount(event.target.value); setQuote(null); setPreflightResult(null); setApprovalHash(null); }} className="text-input" /></label>
               <label className="field"><span>STOCK TARGET %</span><input type="number" min="0" max="100" step="0.01" value={liveTargetWeight} onChange={(event) => { setLiveTargetWeight(event.target.value); setPreflightResult(null); setPortfolio(null); }} className="text-input" /></label>
             </div>
@@ -698,7 +735,7 @@ export function BellproofDashboard() {
               {preflightResult && <PreflightPanel result={preflightResult} canSign={!!connectedWallet && connectedWallet.toLowerCase() === walletAddress.trim().toLowerCase()} busy={executionBusy} nowMs={viewNowMs} onApprove={approveExactAmount} onSwap={executeSwap} />}
               {executionStatus && <p className="message execution-message" aria-live="polite">{executionStatus} {evidenceHistory.length > 0 && <a href="#evidence">View evidence ↓</a>}</p>}
               {portfolioError && <p className="message message-error">{portfolioError}</p>}
-              {portfolio && <div className="result-card"><div className="result-top"><strong>Basket proposal / {portfolio.tokenSymbol}</strong><span>LIVE WALLET READ</span></div><p className="result-meta">Stock {"$"}{(portfolio.stockValueCents / 100).toFixed(2)} · USDT {"$"}{(portfolio.stableValueCents / 100).toFixed(2)} · target {(portfolio.proposal.targetStockWeightBps / 100).toFixed(2)}%</p><p className="result-emphasis">{portfolio.proposal.side === "HOLD" ? "HOLD" : portfolio.proposal.side + " ≈ $" + (portfolio.proposal.proposedTradeCents / 100).toFixed(2)} <span>/ {portfolio.proposal.reason.replaceAll("_", " ")}</span></p><p className="result-meta">Valued with {portfolio.valuationSource} at {formatTime(portfolio.observedAtMs)}. A fresh route and policy review are still required.</p></div>}
+              {portfolio && <div className="result-card"><div className="result-top"><strong>Basket proposal / {portfolio.tokenSymbol}</strong><span>LIVE WALLET READ</span></div><p className="result-meta">Stock {"$"}{(portfolio.stockValueCents / 100).toFixed(2)} · USDT {"$"}{(portfolio.stableValueCents / 100).toFixed(2)} · target {(portfolio.proposal.targetStockWeightBps / 100).toFixed(2)}%</p><p className="result-emphasis">{portfolio.proposal.side === "HOLD" ? "HOLD" : portfolio.proposal.side + " ≈ $" + (portfolio.proposal.proposedTradeCents / 100).toFixed(2)} <span>/ {portfolio.proposal.reason.replaceAll("_", " ")}</span></p>{portfolio.proposal.reason === "NO_PORTFOLIO_VALUE" && <p className="result-meta">This address has no USDT or selected stock token on BSC, so there is no basket to rebalance. You can inspect routes without funding it.</p>}<p className="result-meta">Valued with {portfolio.valuationSource} at {formatTime(portfolio.observedAtMs)}. A fresh route and policy review are still required.</p></div>}
             </div>
           </div>
           </div>

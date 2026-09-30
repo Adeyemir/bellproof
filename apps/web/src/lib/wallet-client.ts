@@ -3,8 +3,8 @@ import { bscUsdtAddress, evmAddressPattern } from "./binance/quote-data";
 
 interface InjectedProvider {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
-  on?(event: "accountsChanged" | "chainChanged", listener: () => void): void;
-  removeListener?(event: "accountsChanged" | "chainChanged", listener: () => void): void;
+  on?(event: "accountsChanged" | "chainChanged" | "disconnect", listener: () => void): void;
+  removeListener?(event: "accountsChanged" | "chainChanged" | "disconnect", listener: () => void): void;
 }
 
 function provider(): InjectedProvider {
@@ -18,9 +18,11 @@ export function watchWalletChanges(onChange: () => void): () => void {
   if (!injected?.on) return () => {};
   injected.on("accountsChanged", onChange);
   injected.on("chainChanged", onChange);
+  injected.on("disconnect", onChange);
   return () => {
     injected.removeListener?.("accountsChanged", onChange);
     injected.removeListener?.("chainChanged", onChange);
+    injected.removeListener?.("disconnect", onChange);
   };
 }
 

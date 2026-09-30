@@ -45,7 +45,7 @@ describe("injected BSC signing boundary", () => {
     expect(request).toHaveBeenCalledWith({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x38" }] });
   });
 
-  it("detects account and chain changes and removes both listeners", () => {
+  it("detects account, chain, and provider disconnection and removes the listeners", () => {
     const listeners = new Map<string, () => void>();
     const on = vi.fn((event: string, listener: () => void) => listeners.set(event, listener));
     const removeListener = vi.fn((event: string) => listeners.delete(event));
@@ -54,7 +54,8 @@ describe("injected BSC signing boundary", () => {
     const stop = watchWalletChanges(changed);
     listeners.get("accountsChanged")?.();
     listeners.get("chainChanged")?.();
-    expect(changed).toHaveBeenCalledTimes(2);
+    listeners.get("disconnect")?.();
+    expect(changed).toHaveBeenCalledTimes(3);
     stop();
     expect(listeners.size).toBe(0);
   });
